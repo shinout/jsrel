@@ -398,13 +398,15 @@ As "export" is a reserved word in JavaScript, used "$export" instead.
 ### jsrel.tables ###
 (ReadOnly) gets list of registered tables
 
+    [table1, table2, ...]
+
 
 instanceof JSRel.Table (shown as table)
 ------
 ### table.columns ###
 (ReadOnly) gets registered columns in the table
-    {columnName1: {type : "str",  required: true },
-     columnName2: {type : "num",  required: false}}
+
+    [column1, column2, ...]
 
 ### table.ins(obj) ###
 Registers a new record.
