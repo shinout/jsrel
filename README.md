@@ -887,8 +887,8 @@ worker.js
     db.ins("song", {title: "In My Life", artist: btls});
 
     var model = {
-      getSongsByArtist: function(artist) {
-        return db.find("artist", {song: });
+      getSongsByArtist: function(name) {
+        return db.find("artist", {name : name}, {join: "song", select : "song"});
       }
     };
     standalone(model);
