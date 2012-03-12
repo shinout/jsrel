@@ -701,7 +701,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       }
     }
     var result = Queries[searchType][condType].call(this, col, value, lists[searchType] || this._indexes.id);
-    var ret = (searchType == "noIndex" || !ids) ? result : cap([ids, result]);
+    var ret = (searchType == "noIndex" || !ids) ? result : hashFilter(ids, result);
     if (report) {
       report.searches.push({
         searchType: searchType, condition: condType, column: col, value: value,
@@ -1295,7 +1295,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   Table.prototype._select = function(keys, cols, joins, joinCols) {
     // when cols is one column
     if (typeof cols == "string") {
-      if (cols == "id") return keys;
+      if (cols == "id")
+        return (keys.length == 0 || typeof keys[0] == "number") ? keys : keys.map(function(v) { return Number(v) });
 
       if (joinCols && joinCols.indexOf(cols) >= 0) return keys.map(function(id) { return joins[id][cols] }, this);
       Utils.assert(this._colInfos[cols], "column", quo(cols), "is not found in table", quo(this.name));
@@ -1551,30 +1552,28 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     return ids.filter(function(id) { return arrayize(values).indexOf(this._data[id][col]) >= 0 }, this);
   };
 
-  var toNum = function(v) { return Number(v) };
-
   Queries.classes.equal = function(col, val, cls) {
-    return (cls[val]) ? Object.keys(cls[val]).map(toNum) : [];
+    return (cls[val]) ? Object.keys(cls[val]) : [];
   };
   Queries.classes.gt = function(col, val, cls) {
     ret = [];
     Object.keys(cls).forEach(function(v) { if (v > val) ret = ret.concat(Object.keys(cls[v])) });
-    return ret.map(toNum);
+    return ret;
   };
   Queries.classes.ge = function(col, val, cls) {
     ret = [];
     Object.keys(cls).forEach(function(v) { if (v >= val) ret = ret.concat(Object.keys(cls[v])) });
-    return ret.map(toNum);
+    return ret;
   };
   Queries.classes.lt = function(col, val, cls) {
     ret = [];
     Object.keys(cls).forEach(function(v) { if (v < val) ret = ret.concat(Object.keys(cls[v])) });
-    return ret.map(toNum);
+    return ret;
   };
   Queries.classes.le = function(col, val, cls) {
     ret = [];
     Object.keys(cls).forEach(function(v) { if (v <= val) ret = ret.concat(Object.keys(cls[v])) });
-    return ret.map(toNum);
+    return ret;
   };
   Queries.classes.$in = function(col, vals, cls) {
     if (!Array.isArray(vals)) return Queries.classes.equal.call(this, col, vals, cls);
@@ -1622,22 +1621,6 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   }
 
   function quo(v) { return '"'+ v + '"'}
-
-  function cap(arr) {
-    if (!arr.length) return [];
-    var current = ret = arr.shift(), target;
-    var n = 0, len = arr.length;
-    while(n < len) {
-      ret = [], target = arr[n++];
-      for(var i=0, l=current.length; i<l; i++) {
-        for(var j=0, l2=target.length; j<l2; j++) {
-          if (current[i] === target[j]) ret.push(current[i]);
-        }
-      }
-      current = ret;
-    }
-    return unique(ret);
-  };
 
   // arrayize if not
   function arrayize(v) { return Array.isArray(v) ? v : [v] }
