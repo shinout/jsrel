@@ -1,0 +1,24 @@
+{
+  "author": "SHIN Suzuki <shinout310@gmail.com>",
+  "name": "jsrel",
+  "description": "JavaScript lightweight synchronous RDB",
+  "keywords": ["database", "DB", "RDB", "relation"],
+  "version": "0.0.0",
+  "repository": {
+    "url": ""
+  },
+  "main": "jsrel.js",
+  "scripts": {
+    "test": "vows test/*.js"
+  },
+  "engines": {
+    "node": "~0.6.9"
+  },
+  "dependencies": {
+    "sortedlist": ">=0.2.8"
+  },
+  "devDependencies": {
+    "vows" : ">=0.6.2"
+  },
+  "optionalDependencies": {}
+}
