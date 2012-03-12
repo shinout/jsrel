@@ -774,18 +774,9 @@ sample data
 <table>
 <tr>
 <td>14</td>
-<th>{"user_card.user": {join: "card"} }</th>
-<td>get "user_card" objects with "card" objects</td>
-<td>[{id: 1, name: "shinout", "user_card.user": [{id: 1, user_id: 1, card_id:1, card: {id:1, ...}}, {id: 3, ...}] }]</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td>15</td>
-<th>{"user_card": {join: "card", as : cards, through: true} }</th>
-<td>get "card" objects through "user_card" objects</td>
-<td>[{id: 1, name: "shinout", "cards": [{id: 1, title: "rabbit", ...}, {id:2, title: "pot", ...] }]</td>
+<th>{"card": {via: "user_card"} }</th>
+<td>get "card" related through "user_card"</td>
+<td>[{id: 1, name: "shinout", "card": [ {id:1, ...}, {id: 3, ...}] }]</td>
 </tr>
 </table>
 
