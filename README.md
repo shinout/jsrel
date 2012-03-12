@@ -123,8 +123,8 @@ installation
 
 When using in modern browsers, 
 
-    <script type="text/javascript" "/path/to/SortedList.js"></script>
-    <script type="text/javascript" "/path/to/jsrel.js"></script>
+    <script type="text/javascript" src="/path/to/SortedList.js"></script>
+    <script type="text/javascript" src="/path/to/jsrel.js"></script>
 
 In Node.js,
 
