@@ -128,6 +128,18 @@ vows.describe('== TESTING CRUD ==').addBatch({
       return db.table('tag');
     },
 
+    "select id from classes" : function(tbl) {
+      var report = {};
+      var results = tbl.find({type: 4}, {explain: report, select: "id", limit: 10, order : {id: "desc"}});
+      assert.equal(report.searches[0].searchType, "classes");
+      results.forEach(function(v, k) {
+        if (results[k+1] == null) return;
+        assert.isTrue(v > results[k+1]);
+      });
+      assert.equal(report.searches[0].searchType, "classes");
+      assert.typeOf(results[0], "number");
+    },
+
     "classes and index (merge)" : function(tbl) {
       var report = {};
       var results = tbl.find({is_activated: true, word: {like$: "L"}}, {explain: report});

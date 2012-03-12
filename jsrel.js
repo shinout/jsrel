@@ -1278,8 +1278,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       if (this._indexes[k] && keys.length * 4 <= this._indexes.id.length) {
         if (report) report.orders.push({column: k, type: orderType, method: "index"});
         var idx = this._indexes[k];
-        if (orderType == "desc") idx = idx.reverse();
         keys = hashFilter(idx, keys);
+        if (orderType == "desc") keys = keys.reverse();
       }
       else {
         keys = keys.slice().sort(generateCompare(this._colInfos[k].type, k, this._data));
