@@ -165,7 +165,14 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       assert.equal(comp, newDB.$export());
     },
 
-    "compression rate" : function(v) {
+    "cloning with empty DB (raw)" : function(v) {
+      var dump = emptyDB.$export(true);
+      var newDB = JSRel.$import("AnotherEmptyRaw", dump);
+      var redump = newDB.$export(true);
+      assert.equal(dump, redump)
+    },
+
+     "compression rate" : function(v) {
       var comp   = db.$export();
       var nocomp = db.$export(true);
       assert.isTrue(comp.length * 2 < nocomp.length)

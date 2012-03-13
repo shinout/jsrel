@@ -227,6 +227,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     var parseMethod = "_parse" + format;
     Utils.assert(typeof this[parseMethod] == "function", "unknown format", quo(format), "given in", quo(this.db.id));
     this[parseMethod](tblInfo);
+    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
   };
 
   JSRel.Table = Table;
@@ -910,22 +911,16 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * parse raw stringified data
    **/
   Table.prototype._parseRaw = function(info) {
-    this._colInfos  = info._colInfos;
-    this._data      = info._data;
+    var indexes = info._indexes;
+    delete info._indexes;
+    Object.keys(info).forEach(function(k) { this[k] = info[k] }, this);
 
-    // _indexes
-    Object.keys(info._indexes).forEach(function(idxName) {
-      var ids = info._indexes[idxName];
+    // set _indexes
+    Object.keys(indexes).forEach(function(idxName) {
+      var ids = indexes[idxName];
       var isUniq = ids._unique; // FIXME private API of SortedList
-      this._setIndex(idxName.split(','), isUniq, ids);
+      this._setIndex(idxName.split(','), isUniq, Array.prototype.slice.call(ids));
     }, this);
-
-    this._classes   = info._classes;
-
-    this._rels      = info._rels;
-    this._referreds = info._referreds;
-
-    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
     return this;
   };
 
@@ -987,10 +982,9 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       Utils.assert(this._colInfos[parsed.name] == null, quo(parsed.name), "is already registered.")
       this._colInfos[parsed.name] = parsed;
     }, this);
-    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
 
     // creating relation indexes, relation info
-    this.columns.forEach(function(colName) {
+    Object.keys(this._colInfos).forEach(function(colName) {
       var colInfo = this._colInfos[colName];
       var exTblName = colInfo.rel;
       if (!exTblName) return;
