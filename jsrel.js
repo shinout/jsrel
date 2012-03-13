@@ -673,6 +673,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * returns id list
    **/
   Table.prototype._optSearch = function(col, condType, value, ids, report) {
+    Utils.assert(this._colInfos[col], "unknown column", quo(col))
     var lists = {
       index  : this._indexes[col],
       classes: this._classes[col],

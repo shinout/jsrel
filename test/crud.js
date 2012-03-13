@@ -98,6 +98,26 @@ vows.describe('== TESTING CRUD ==').addBatch({
 
   "search" : {
     topic : db.table('tag'),
+    "undefined condition" : function(tagTbl) {
+      try {
+        tagTbl.find({word: {xxx: true}});
+        assert.fail();
+      }
+      catch (e) {
+        assert.match(e.message, /undefined condition/);
+      }
+    },
+
+    "undefined column" : function(tagTbl) {
+      try {
+        var res = tagTbl.find({xxx: 1});
+        assert.fail();
+      }
+      catch (e) {
+        assert.match(e.message, /unknown column/);
+      }
+    },
+
     "the number of entries" : function(tagTbl) {
       assert.equal(tagTbl.count(), tagTbl._indexes.id.length);
     },
