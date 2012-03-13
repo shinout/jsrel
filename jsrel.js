@@ -1266,7 +1266,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     var orders = objectize(order, "asc"); 
     Object.keys(orders).reverse().forEach(function(k) {
       var orderType = orders[k];
-      if (this._indexes[k] && keys.length * 4 <= this._indexes.id.length) {
+      if (this._indexes[k] && keys.length * 4 > this._indexes.id.length) {
         if (report) report.orders.push({column: k, type: orderType, method: "index"});
         var idx = this._indexes[k];
         keys = hashFilter(idx, keys);
@@ -1458,11 +1458,16 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       var key = list.key(obj.id, pos);
       var results = [];
       var i = (key != null) ? key : pos+1, len = list.length, cur, v;
+      var included = false;
       do {
         cur = data[list[i]], v = cur[col];
-        if (v.indexOf(value) == 0) results.push(cur.id);
+        if (v.indexOf(value) == 0) {
+          included = true;
+          results.push(cur.id);
+        }
+        else included = false;
       }
-      while(++i < len && v >= value);
+      while(++i < len && (v <= value || included));
       return results;
     }, this);
   };

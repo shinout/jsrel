@@ -38,10 +38,10 @@ function order(N, M, L) {
 
 for (var N="10"; N!="100000"; N+= "0") {
   var n = Number(N);
-  // var nper2 = Math.floor(n/2);
-  // order(n, nper2, 1000);
-  // var nper3 = Math.floor(n/3);
-  // order(n, nper3, 1000);
+  var nper2 = Math.floor(n/2);
+  order(n, nper2, 1000);
+  var nper3 = Math.floor(n/3);
+  order(n, nper3, 1000);
   var nper30 = Math.floor(n*3 / 10);
   order(n, nper30, 1000);
   var nper4 = Math.floor(n/4);
@@ -49,6 +49,12 @@ for (var N="10"; N!="100000"; N+= "0") {
 
   var nper5 = Math.floor(n/5);
   order(n, nper5, 1000);
+
+  var nper6 = Math.floor(n/6);
+  order(n, nper6, 1000);
+
+  var nper7 = Math.floor(n/7);
+  order(n, nper7, 1000);
 }
 
 function cap(arr) {
