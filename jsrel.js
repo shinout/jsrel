@@ -895,9 +895,9 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
           idhash[id] = 1;
           return idhash;
         }, {});
-        cls.cols = col.split(",");
         return cls;
       }, {});
+      classes[col].cols = col.split(",");
       return classes;
     }, {});
   };
@@ -961,20 +961,18 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
 
     // getting indexes, uniques, classes
-    var indexes = this._normalizeIndexes(colInfos.$indexes, colInfos);
-    var uniques = this._normalizeIndexes(colInfos.$uniques, colInfos);
-    var classes = this._normalizeIndexes(colInfos.$classes, colInfos);
-    delete colInfos.$indexes;
-    delete colInfos.$uniques;
-    delete colInfos.$classes;
-
+    var metaInfos = ["$indexes", "$uniques", "$classes"].reduce(function(ret, k) {
+      ret[k] = arrayize(colInfos[k], true);
+      delete colInfos[k];
+      return ret;
+    }, {});
 
     // set default columns
     colInfos.id = 1;
     colInfos.upd_at = 1;
     colInfos.ins_at = 1;
-    uniques.push(["id"]); // FIXME (is always the same format as the normalized index?)
-    indexes.push(["upd_at"], ["ins_at"]);
+    metaInfos.$uniques.unshift("id");
+    metaInfos.$indexes.unshift("upd_at", "ins_at");
 
     var columnNames = Object.keys(colInfos);
     columnNames.forEach(function(col) {
@@ -991,11 +989,6 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }, this);
     Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
 
-    // registering indexes, unique indexes
-    indexes.forEach(function(cols) { this._setIndex(cols, false) }, this);
-    uniques.forEach(function(cols) { this._setIndex(cols, true) }, this);
-    classes.forEach(function(cols) { this._setClass(cols) }, this);
-
     // creating relation indexes, relation info
     this.columns.forEach(function(colName) {
       var colInfo = this._colInfos[colName];
@@ -1006,13 +999,21 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
       var exTable = this.db.table(exTblName);
       Utils.assert(exTable, "Invalid relation: ", quo(exTblName), "is an undefined table in", quo(tblName));
-      this._setIndex([colName], false);
+      metaInfos.$indexes.push(colName);
       var col = colName.slice(0, -3);
       this._rels[col] = exTblName;
 
       if (!exTable._referreds[tblName]) exTable._referreds[tblName] = {};
       exTable._referreds[tblName][col] = this._colInfos[colName].required; // register to a referring table
     }, this);
+
+    // registering meta infos (index, unique, class)
+    Object.keys(metaInfos).forEach(function(k) {
+      metaInfos[k] = this._normalizeIndexes(metaInfos[k]);
+    }, this);
+    metaInfos.$indexes.forEach(function(cols) { this._setIndex(cols, false) }, this);
+    metaInfos.$uniques.forEach(function(cols) { this._setIndex(cols, true) }, this);
+    metaInfos.$classes.forEach(function(cols) { this._setClass(cols) }, this);
 
     // setting _idxKeys
     this._idxKeys = Table._getIdxKeys(this._indexes);
@@ -1026,7 +1027,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    **/
   Table.prototype._setIndex = function(cols, isUniq, ids) {
     var types = cols.map(function(col) { return this._colInfos[col].type }, this);
-    this._indexes[cols.join(",")] = Table._getIndex(cols, isUniq, types, ids, this._data);
+    // if duplicated, the former is preferred
+    var idxName = cols.join(",");
+    if (this._indexes[idxName] != null) return;
+    this._indexes[idxName] = Table._getIndex(cols, isUniq, types, ids, this._data);
   };
 
   /**
@@ -1055,14 +1059,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
   /**
    * set class index columns
+   * if duplicated, the former is preferred.
    **/
-  Table.prototype._setClass = function(cols, defaultValues) {
+  Table.prototype._setClass = function(cols) {
     var idxname = cols.join(',');
-    if (defaultValues) {
-      var oriname = defaultValues.cols.join(',');
-      Utils.assert(oriname === idxname, 'Different coltypes', quo(idxname), 'and', quo(oriname));
-      this._classes[idxname] = defaultValues;
-    }
+    if (this._classes[idxname] != null) return;
     cols.forEach(function(col) {
       Utils.assert(this._colInfos[col].type != Table._STR, 'Cannot set class index to string columns', quo(col));
     }, this);
@@ -1186,22 +1187,18 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
 
   /**
-   * normalizing indexes, uniques
+   * normalizing meta infos
+   *
    **/
-  Table.prototype._normalizeIndexes = function(v, colInfos) {
-    if (!v) return [];
-    if (typeof v == "string") v = [v];
-    Utils.assert(Array.isArray(v), "definition of the indexes must be an array. in", quo(this.name));
-    var ret = [];
-    v.forEach(function(def) {
-      if (typeof def == "string") def = [def];
-      Utils.assert(Array.isArray(v), "definition of the indexes must be an array. in", quo(this.name));
-      def.forEach(function(col) {
-        Utils.assert(colInfos[col], quo(col), "is unregistered column. in", quo(this.name));
+  Table.prototype._normalizeIndexes = function(arr) {
+    return arr.map(function(def) {
+      def = arrayize(def);
+      return def.map(function(col) {
+        if (this._rels[col]) col = col + "_id";
+        Utils.assert(this._colInfos[col] != undefined, quo(col), "is unregistered column. in", quo(this.name));
+        return col;
       }, this);
-      ret.push(def);
     }, this);
-    return ret;
   };
 
   /**
@@ -1623,7 +1620,9 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   function quo(v) { return '"'+ v + '"'}
 
   // arrayize if not
-  function arrayize(v) { return Array.isArray(v) ? v : [v] }
+  function arrayize(v, empty) {
+    return Array.isArray(v) ? v : (empty && v == null) ? [] : [v];
+  }
 
   // objectize if string
   function objectize(k, v) {

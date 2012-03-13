@@ -3,7 +3,7 @@
   "name": "jsrel",
   "description": "JavaScript lightweight synchronous RDB",
   "keywords": ["database", "DB", "RDB", "relation"],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "repository": {
     "url": ""
   },
@@ -12,7 +12,7 @@
     "test": "vows test/*.js"
   },
   "engines": {
-    "node": "~0.6.9"
+    "node": ">=0.6.1"
   },
   "dependencies": {
     "sortedlist": ">=0.2.8"

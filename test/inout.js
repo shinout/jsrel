@@ -57,6 +57,11 @@ var db = JSRel.use(__dirname + "/tmp/inout", {
   }
 });
 
+var emptyDB = JSRel.use(__dirname + "/tmp/empty", { schema: { 
+  tbl1: { col1: 0, col2 : true, col3: true, $indexes: ["col1", "col2"], $uniques: ["col1", ["col1", "col3"]], $classes: "col1"},
+  tbl2: { ex : "tbl1", col1: true, col2 : true, col3: 1, $indexes: ["col1", "col2"], $uniques: ["col1", ["col1", "col3"]], $classes: ["ex", "col3"]}
+}});
+
 var tagTbl = db.table("tag");
 fs.readFileSync(__dirname + '/data/genes', 'utf8').trim().split("\n").forEach(function(wd, k) {
   tagTbl.ins({word: wd, type: (k%5) +1});
@@ -109,6 +114,18 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       assert.equal(st(cClasses), st(recClasses));
     },
 
+    "classes (empty)": function() {
+      var tbl = emptyDB.table("tbl2");
+      var classes = tbl._classes;
+      var cClasses = Table._compressClasses(classes);
+      var deClasses = Table._decompressClasses(cClasses);
+      var recClasses = Table._compressClasses(deClasses);
+      assert.deepEqual(classes, deClasses)
+      assert.equal(st(classes),  st(deClasses));
+      assert.deepEqual(cClasses, recClasses)
+      assert.equal(st(cClasses), st(recClasses));
+    },
+
     "rels": function() {
       var tbl = db.table("song");
       var rels = tbl._rels;
@@ -123,7 +140,7 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       var c = tbl._compress();
       tbl._parseCompressed(c);
       assert.equal(st(tbl._compress()), st(c))
-    },
+    }
   },
 
   "export/import": {
@@ -139,6 +156,12 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
     "cloning" : function(v) {
       var comp  = db.$export();
       var newDB = JSRel.$import("anotherId", comp);
+      assert.equal(comp, newDB.$export());
+    },
+
+    "cloning with empty DB" : function(v) {
+      var comp  = emptyDB.$export();
+      var newDB = JSRel.$import("AnotherEmpty", comp);
       assert.equal(comp, newDB.$export());
     },
 

@@ -135,7 +135,7 @@ vows.describe('== TESTING SCHEMA ==').addBatch({
       catch (e) { return e.message }
     },
     " is not allowed" : function(topic) {
-      assert.match(topic, /definition of the indexes must be an array. in "user"/);
+      assert.match(topic, /is unregistered column. in "user"/);
     }
   },
 
