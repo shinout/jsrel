@@ -27,7 +27,7 @@ if (!db.one("ucsc", 1)) {
     console.time("compress")
     var b = db.$export();
     console.timeEnd("compress")
-    db.save(true)
+    db.save()
   });
 }
 else {

@@ -163,8 +163,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   /**
    * jsrel.save(compress)
    **/
-  JSRel.prototype.save = function(compress) {
-    this.storage.setItem(this.id, this.$export(!compress));
+  JSRel.prototype.save = function(noCompress) {
+    this.storage.setItem(this.id, this.$export(noCompress));
     return this;
   };
 
