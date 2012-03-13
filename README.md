@@ -593,6 +593,11 @@ Returns a list of records.
 <td>get list of object which contains the given columns instead of all columns</td>
 <td>["name", "age"]</td></tr>
 
+<tr><th>explain</th>
+<td>object</td>
+<td>put searching information to the given object</td>
+<td>{}</td></tr>
+
 </table>
 
 #### order description ####
