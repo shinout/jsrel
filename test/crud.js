@@ -356,7 +356,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
     },
 
     "NaN" : function(msg) {
-      assert.match(msg, /INVALID_PRICE is not a valid number/);
+      assert.match(msg, /"INVALID_PRICE" is not a valid number/);
     }
   },
 
@@ -381,7 +381,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
     },
 
     "an exception thrown." : function(msg) {
-      assert.match(msg, /2 is not a valid id in relation table book/);
+      assert.match(msg, /"2" is not a valid id in relation table "book"/);
     }
   },
 

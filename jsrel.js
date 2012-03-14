@@ -7,11 +7,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   // load modules (Node.js)
   if (isNode) SortedList = require('sortedlist');
 
-  // utility functions, variables
-  var Utils = { noop: function() {} };
-
   // storages
-  var storages = { mock : { getItem: Utils.noop, setItem: Utils.noop, removeItem: Utils.noop } };
+  var storages = { mock : { getItem: noop, setItem: noop, removeItem: noop } };
   if (isBrowser) {
     storages.local   = window.localStorage;
     storages.session = window.sessionStorage;
@@ -73,7 +70,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   Object.defineProperties(JSRel, {
     uniqIds : {
       get: function() { return Object.keys(this._dbInfos) },
-      set: Utils.noop
+      set: noop
     },
     isNode :    { value: isNode, writable : false },
     isBrowser : { value: isBrowser, writable : false },
@@ -85,15 +82,15 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * Creates an instance
    **/
   JSRel.use = function(uniqId, options) {
-    Utils.assert(uniqId, 'uniqId is required and must be non-zero value.');
+    (uniqId) || err('uniqId is required and must be non-zero value.');
     uniqId = uniqId.toString();
     if (this._dbInfos[uniqId]) return this._dbInfos[uniqId].db;
 
-    Utils.assert(options, 'options is required.');
+    (options) || err('options is required.');
 
     if (!options.storage) options.storage = (isNode) ? "file" : (isBrowser) ? "local" : "mock";
     var storage = this.storages[options.storage];
-    Utils.assert(storage, 'options.storage must be one of ["' + Object.keys(this.storages).join('", "') + '"]');
+    (storage) || err('options.storage must be one of ["' + Object.keys(this.storages).join('", "') + '"]');
 
     var format, tblInfos;
 
@@ -103,11 +100,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       catch (e) { throw new Error('Invalid JSON given. in db', quo(uniqId)) }
       format = dbinfo.f;
       tblInfos = dbinfo.t;
-      Utils.assert(format, "format is not given in stringified data in db", uniqId);
+      (format) || err("format is not given in stringified data in db", uniqId);
     }
     else {
-      Utils.assert(options.schema && typeof options.schema == 'object', 'options.schema is required');
-      Utils.assert(Object.keys(options.schema).length, 'schema must contain at least one table');
+      (options.schema && typeof options.schema == 'object') || err('options.schema is required');
+      (Object.keys(options.schema).length) || err('schema must contain at least one table');
       format = "Schema";
       tblInfos = options.schema;
     }
@@ -120,14 +117,14 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * JSRel.$import(uniqId, str)
    **/
   JSRel.$import = function(uniqId, str) {
-    Utils.assert(uniqId, 'uniqId is required and must be non-zero value.');
+    (uniqId) || err('uniqId is required and must be non-zero value.');
     uniqId = uniqId.toString();
-    Utils.assert(this._dbInfos[uniqId] == null, "id", quo(uniqId), "already exists");
+    (this._dbInfos[uniqId] == null) || err("id", quo(uniqId), "already exists");
     // TODO UNIQID CHECK
     try { var d = JSON.parse(str) }
     catch (e) { throw new Error('Invalid format given.') }
     ["n", "s", "a", "f", "t"].forEach(function(k) {
-      Utils.assert(d.hasOwnProperty(k), "Invalid Format given.");
+      (d.hasOwnProperty(k)) || err("Invalid Format given.");
     });
     return new JSRel(uniqId, d.n, d.s, d.a, d.f, d.t);
   };
@@ -150,7 +147,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
   Object.defineProperty(JSRel.prototype, 'storage', {
     get: function() { return JSRel.storages[this._storage] },
-    set: Utils.noop 
+    set: noop 
   });
 
   /**
@@ -234,7 +231,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     this._referreds = {};
 
     var parseMethod = "_parse" + format;
-    Utils.assert(typeof this[parseMethod] == "function", "unknown format", quo(format), "given in", quo(this.db.id));
+    (typeof this[parseMethod] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
     this[parseMethod](tblInfo);
     Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
   };
@@ -265,7 +262,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    **/
   Table.prototype.ins = function(obj, options) {
     options || (options = {});
-    Utils.assert(obj && typeof obj == "object", "You must pass object to table.ins().");
+    (obj && typeof obj == "object") || err("You must pass object to table.ins().");
     // converting related object
     this._convertRelObj(obj);
 
@@ -285,14 +282,14 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       if (!this._colInfos[colName].required) return;
       var tbl = this.db.table(this._rels[col]);
       var relId = col + "_id";
-      Utils.assert(tbl._data[obj[relId]], 
-        obj[relId], 'is not a valid id in relation table', tbl.name, 'during insertion to', this.name);
+      (tbl._data[obj[relId]]) ||
+        err(quo(obj[relId]), 'is not a valid id in relation table', quo(tbl.name), 'during insertion to', quo(this.name));
     }, this);
 
     // set id, ins_at, upd_at
     obj.id || (obj.id = this._getNewId());
-    Utils.assert(!this._data[obj.id], 'the given id "', obj.id, '" already exists.');
-    Utils.assert(obj.id != Table.ID_TEMP, 'id cannot be', Table.ID_TEMP);
+    (!this._data[obj.id]) || err('the given id "', obj.id, '" already exists.');
+    (obj.id != Table.ID_TEMP) || err('id cannot be', Table.ID_TEMP);
 
     if (obj.ins_at == null) obj.ins_at = new Date().getTime();
     if (obj.upd_at == null) obj.upd_at = obj.ins_at;
@@ -329,7 +326,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     if (!options.sub && this.db._autosave) this.db.save(); // autosave
     // else if (this.db._tx) this.db._tx.push([JSRel._DEL, this.name, obj.id]);
 
-    return Utils.copy(obj);
+    return copy(obj);
   };
 
   /**
@@ -338,9 +335,9 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   Table.prototype.upd = function(obj, options) {
     options || (options = {});
     // checking id
-    Utils.assert(obj && obj.id != null && obj.id != Table.ID_TEMP, 'id is not found in the given object.');
+    (obj && obj.id != null && obj.id != Table.ID_TEMP) || err('id is not found in the given object.');
     var old = this._data[obj.id];
-    Utils.assert(old, "Cannot update. Object not found in table", this.name);
+    (old) || err("Cannot update. Object not found in table", this.name);
 
     // delete timestamp (prevent manual update)
     if (!options.force) {
@@ -377,7 +374,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         var required = this._colInfos[idcol].required;
         if (!required && exId == null) return;
         var exObj = this.db.one(tbl, exId);
-        Utils.assert(exObj, "invalid external id", quo(idcol), ":", exId);
+        (exObj) || err("invalid external id", quo(idcol), ":", exId);
       }
     }, this)
 
@@ -395,7 +392,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
             return true;
           }
         });
-        Utils.assert(updIndexPoses[idxName] >= 0, 'invalid index position: ', idxName, "in", updObj.id);
+        (updIndexPoses[idxName] >= 0) || err('invalid index position: ', idxName, "in", updObj.id);
         list.remove(updIndexPoses[idxName]);
       }, this);
     }, this);
@@ -438,8 +435,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       var oldval = cols.map(function(col) { return old[col] })
       var newval = cols.map(function(col) { return updObj[col] })
       if (oldval === newval) return;
-      Utils.assert(cls[oldval][updObj.id] === 1 &&
-          'update object is not in classes.', updObj.id, "in table", quo(this.name));
+      (cls[oldval][updObj.id] === 1) ||
+          err('update object is not in classes.', updObj.id, "in table", quo(this.name));
       delete cls[oldval][updObj.id];
       if (Object.keys(cls[oldval]).length == 0) delete cls[oldval];
       if (!cls[newval]) cls[newval] = {};
@@ -530,7 +527,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
             });
           }
           else {
-            Utils.assert(Array.isArray(info.select), "typeof options.select must be one of string, null, array");
+            (Array.isArray(info.select)) || err("typeof options.select must be one of string, null, array");
             Object.keys(joins).forEach(function(id) {
              var arr = joins[id][name];
              if (arr) joins[id][name] = join[id][name].map(function(v) {
@@ -608,7 +605,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     options || (options = {});
     var delList;
     if (typeof arg == "number") {
-      Utils.assert(this._data[arg], "id", arg, "is not found in table", this.name);
+      (this._data[arg]) || err("id", arg, "is not found in table", this.name);
       delList = [this._data[arg]];
     }
     else {
@@ -620,23 +617,22 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       Object.keys(this._indexes).forEach(function(idxName) {
         var list = this._indexes[idxName];
         var keys = list.keys(obj.id);
-        Utils.assert(keys != null, "invalid keys"); // for debugging
+        (keys != null) || err("invalid keys"); // for debugging
         var bool = keys.some(function(key) {
           if (obj.id == list[key]) {
             list.remove(key);
             return true;
           }
         });
-        Utils.assert(bool, "index was not deleted."); // for debugging
+        (bool) || err("index was not deleted."); // for debugging
       }, this);
 
       // delete classes 
       Object.keys(this._classes).forEach(function(columns) {
         var cls = this._classes[columns];
         var cols = columns.split(',');
-        var val = cols.map(function(col) { return obj[col] })
-        Utils.assert(cls[val][obj.id] === 1,
-            'deleting object is not in classes.', quo(obj.id), "in table", quo(this.name));
+        var val = cols.map(function(col) { return obj[col] });
+        (cls[val][obj.id] === 1) || err('deleting object is not in classes.', quo(obj.id), "in table", quo(this.name));
         delete cls[val][obj.id];
         if (Object.keys(cls[val]).length == 0) delete cls[val];
       }, this);
@@ -645,7 +641,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       delete this._data[obj.id];
 
       // if (options.sub) {
-      //   var txlist = [[JSRel._INS, this.name, Utils.copy(obj)]];
+      //   var txlist = [[JSRel._INS, this.name, copy(obj)]];
       // }
       // var subs = [];
 
@@ -697,7 +693,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * returns id list
    **/
   Table.prototype._optSearch = function(col, condType, value, ids, report) {
-    Utils.assert(this._colInfos[col], "unknown column", quo(col))
+    (this._colInfos[col]) || err("unknown column", quo(col));
     var lists = {
       index  : this._indexes[col],
       classes: this._classes[col],
@@ -710,7 +706,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }
     else {
       switch (condType) {
-      default: Utils.assert(false, 'undefined condition', quo(condType));
+      default: err('undefined condition', quo(condType));
       case "equal":
       case "$in":
         searchType = lists.classes ? 'classes' : 'index';
@@ -740,7 +736,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * search using index
    **/
   Table.prototype._idxSearch = function(list, obj, fn, nocopy) {
-    var ob = (nocopy) ? obj : Utils.copy(obj);
+    var ob = (nocopy) ? obj : copy(obj);
     if (ob.id == null) ob.id = Table.ID_TEMP;
     this._data[Table.ID_TEMP] = ob; // temporary register the data
     var ret = fn.call(this, ob, this._data);
@@ -786,17 +782,17 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       val = colInfo._default;
     }
     else {
-      Utils.assert(val != null, 'column', '"'+colName+'"', 'is required.');
+      (val != null) || err('column', '"'+colName+'"', 'is required.');
       switch (colInfo.type) {
       case Table._NUM:
         val = Number(val);
-        Utils.assert(!isNaN(val), colName, ":", obj[colName], "is not a valid number.");
+        (!isNaN(val)) || err(quo(colName), ":", quo(obj[colName]), "is not a valid number.");
         break;
       case Table._BOOL:
         val = !!val;
         break;
       case Table._STR:
-        Utils.assert(typeof val.toString == "function", "cannot convert", val, "to string");
+        (typeof val.toString == "function") || err("cannot convert", val, "to string");
         val = val.toString();
         break;
       }
@@ -814,8 +810,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     var list = this._indexes[idxName];
     if (!list._unique) return; // (FIXME) private API of SortedList
     this._idxSearch(list, obj, function(tmpObj, data) {
-      Utils.assert(list.key(tmpObj.id) == null,
-       "duplicated entry :", idxName.split(",").map(function(col) { return obj[col] }).join(','), "in", idxName);
+      (list.key(tmpObj.id) == null) ||
+       err("duplicated entry :", idxName.split(",").map(function(col) { return obj[col] }).join(','), "in", idxName);
     });
   };
 
@@ -943,8 +939,6 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   Table._compressRels   = function(rels, referreds) { return [rels, referreds] };
   Table._decompressRels = function(c) { return c };
 
-  function bq(v) { return "`"+v+"`" }
-
   Table._columnToSQL = function(info) {
     var colType = Table.TYPE_SQLS[info.sqltype];
     var stmt = [bq(info.name), colType];
@@ -1036,11 +1030,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * parse schema
    **/
   Table.prototype._parseSchema = function(colInfos) {
-    colInfos = Utils.copy(colInfos);
+    colInfos = copy(colInfos);
     var tblName = this.name;
 
     Table.INVALID_COLUMNS.forEach(function(col) {
-      Utils.assert(colInfos[col] == null, col, "is not allowed for a column name");
+      (colInfos[col] == null) || err(col, "is not allowed for a column name");
     });
 
 
@@ -1060,15 +1054,15 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
     var columnNames = Object.keys(colInfos);
     columnNames.forEach(function(col) {
-      Utils.assert(col.match(/[,.`"']/) == null, "comma, dot and quotations cannot be included in a column name.");
+      (col.match(/[,.`"']/) == null) || err("comma, dot and quotations cannot be included in a column name.");
     });
 
     // parsing and registering columns
-    Utils.assert(columnNames.length > 3, 'table', quo(tblName), 'must contain at least one column.');
+    (columnNames.length > 3) || err('table', quo(tblName), 'must contain at least one column.');
 
     columnNames.forEach(function(colName) {
       var parsed = this._parseColumn(colName, colInfos[colName]);
-      Utils.assert(this._colInfos[parsed.name] == null, quo(parsed.name), "is already registered.")
+      (this._colInfos[parsed.name] == null) || err(quo(parsed.name), "is already registered.")
       this._colInfos[parsed.name] = parsed;
     }, this);
 
@@ -1078,10 +1072,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       var exTblName = colInfo.rel;
       if (!exTblName) return;
 
-      Utils.assert(colName.slice(-3) == '_id', 'Relation columns must end with "_id".');
+      (colName.slice(-3) == '_id') || err('Relation columns must end with "_id".');
 
       var exTable = this.db.table(exTblName);
-      Utils.assert(exTable, "Invalid relation: ", quo(exTblName), "is an undefined table in", quo(tblName));
+      (exTable) || err("Invalid relation: ", quo(exTblName), "is an undefined table in", quo(tblName));
       metaInfos.$indexes.push(colName);
       var col = colName.slice(0, -3);
       this._rels[col] = exTblName;
@@ -1152,7 +1146,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     var idxname = cols.join(',');
     if (this._classes[idxname] != null) return;
     cols.forEach(function(col) {
-      Utils.assert(this._colInfos[col].type != Table._STR, 'Cannot set class index to string columns', quo(col));
+      (this._colInfos[col].type != Table._STR) || err('Cannot set class index to string columns', quo(col));
     }, this);
     this._classes[idxname] = {cols: cols};
   };
@@ -1226,7 +1220,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    **/
   Table.prototype._resolveTableColumn = function(k, joinInfo, val) {
     var spldot = k.split("."), len = spldot.length, reltype;
-    Utils.assert(len <= 2, "invalid expression", quo(k));
+    (len <= 2) || err("invalid expression", quo(k));
     if (len == 1) {
       if (this._rels[k]) {
         joinInfo.col = k + "_id";
@@ -1237,7 +1231,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         var tbl = k;
         var referred = this._referreds[tbl];
         if (!referred) { // checking N:M relation ("via")
-          Utils.assert(typeof val == "object" && val.via != null, "table", quo(tbl), "is not referring table", quo(this.name));
+          (typeof val == "object" && val.via != null) || err("table", quo(tbl), "is not referring table", quo(this.name));
           var reltype = this._resolveTableColumn(val.via, joinInfo);
           delete val.via;
           var subval = {};
@@ -1253,7 +1247,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         }
         else {
           var refCols = Object.keys(referred);
-          Utils.assert(refCols.length == 1, "table", quo(tbl), "refers", quo(this.name), "multiply");
+          (refCols.length == 1) || err("table", quo(tbl), "refers", quo(this.name), "multiply");
           joinInfo.tbl = tbl;
           joinInfo.col= refCols[0] + "_id";
           reltype = "N";
@@ -1263,8 +1257,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     else { // len == 2
       var tbl = spldot[0];
       var col = spldot[1];
-      Utils.assert(refCols, "table", quo(tbl), "is not referring table", quo(this.name));
-      Utils.assert(refCols.indexOf(col) >= 0, "table", quo(tbl), "does not have a column", quo(col));
+      (refCols) || err("table", quo(tbl), "is not referring table", quo(this.name));
+      (refCols.indexOf(col) >= 0) || err("table", quo(tbl), "does not have a column", quo(col));
       joinInfo.tbl = tbl;
       joinInfo.col = col + "_id";
       reltype = "N";
@@ -1282,7 +1276,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       def = arrayize(def);
       return def.map(function(col) {
         if (this._rels[col]) col = col + "_id";
-        Utils.assert(this._colInfos[col] != undefined, quo(col), "is unregistered column. in", quo(this.name));
+        (this._colInfos[col] != undefined) || err(quo(col), "is unregistered column. in", quo(this.name));
         return col;
       }, this);
     }, this);
@@ -1357,7 +1351,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       default:
         if (typeof columnOption == 'string') columnOption = { type: columnOption };
 
-        Utils.assert(columnOption && columnOption.type, 'invalid column description.');
+        (columnOption && columnOption.type) || err('invalid column description.');
         switch (columnOption.type) {
           case 'text'   :
           case 'string' :
@@ -1384,8 +1378,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         }
 
         if (columnOption._default != null) {
-          Utils.assert(typeof columnOptions._default == Table.TYPES[colObj.type],
-            "type of the default value", columnOption._default, "does not match", Table.TYPES[colObj.type],
+          (typeof columnOptions._default == Table.TYPES[colObj.type]) ||
+            err("type of the default value", columnOption._default, "does not match", Table.TYPES[colObj.type],
             "in", colObj.name);
           colObj._default = columnOption._default;
           if (colObj.sqltype == Table._STR) colObj.sqltype = Table._CHRS;
@@ -1426,13 +1420,13 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         return (keys.length == 0 || typeof keys[0] == "number") ? keys : keys.map(function(v) { return Number(v) });
 
       if (joinCols && joinCols.indexOf(cols) >= 0) return keys.map(function(id) { return joins[id][cols] }, this);
-      Utils.assert(this._colInfos[cols], "column", quo(cols), "is not found in table", quo(this.name));
+      (this._colInfos[cols]) || err("column", quo(cols), "is not found in table", quo(this.name));
       return keys.map(function(id) { return this._data[id][cols] }, this);
     }
 
     // when cols is not defined
     if (cols == null) {
-      var ret = keys.map(function(id) { return Utils.copy(this._data[id]) }, this);
+      var ret = keys.map(function(id) { return copy(this._data[id]) }, this);
       // bind objects
       if (joins && joinCols && joinCols.length) {
         ret.forEach(function(obj) {
@@ -1444,13 +1438,13 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       return ret;
     }
 
-    Utils.assert(Array.isArray(cols), "typeof options.select", cols, "must be string, null, or array");
+    (Array.isArray(cols)) || err("typeof options.select", cols, "must be string, null, or array");
 
     // when cols is array
     var _joinCols = [];
     cols = cols.filter(function(col) {
       if (joinCols.indexOf(col) < 0) {
-        Utils.assert(this._colInfos[col], "column", quo(col), "is not found in table", quo(this.name));
+        (this._colInfos[col]) || err("column", quo(col), "is not found in table", quo(this.name));
         return true;
       }
       _joinCols.push(col);
@@ -1571,7 +1565,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     JSRel.prototype[name] = function() {
       var tblName = Array.prototype.shift.call(arguments);
       var tbl = this.table(tblName);
-      Utils.assert(tbl, 'invalid table name', quo(tblName));
+      (tbl) || err('invalid table name', quo(tblName));
       return tbl[name].apply(tbl, arguments);
     };
   });
@@ -1662,7 +1656,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
      return ids.filter(function(id) { return this._data[id][col] === value }, this);
   };
   Queries.noIndex.like$ = function(col, value, ids) {
-    Utils.assert(this._colInfos[col].type == Table._STR, 'Cannot use like$ search to a non-string column', col);
+    (this._colInfos[col].type == Table._STR) || err('Cannot use like$ search to a non-string column', col);
     return ids.filter(function(id) { return this._data[id][col].indexOf(value) == 0 }, this);
   };
   Queries.noIndex.like = function(col, value, ids) {
@@ -1718,24 +1712,20 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
  * Utility functions without referencing any outer scopes
  *********/
 
-  /**
-   * Utils.assert(True_OR_False, msg1, msg2, ...)
-   * asserting values
-   **/
-  Utils.assert = function() {
+  function noop() {}
+
+  function err() {
     var args = Array.prototype.slice.call(arguments);
-    var torf = args.shift();
-    if (torf) return;
     args.unshift('[JSRel.js]');
     var err = args.join(" ");
     if (!err) err = "(undocumented error)";
     throw new Error(err);
-  };
+  }
 
   /**
    * shallowly copy the given object
    **/
-  Utils.copy = function(obj) {
+  function copy(obj) {
     var ret = {};
     for (var attr in obj) {
       if (obj.hasOwnProperty(attr)) ret[attr] = obj[attr];
@@ -1753,6 +1743,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   }
 
   function quo(v) { return '"'+ v + '"'}
+  function bq(v) { return "`"+v+"`" }
 
   // arrayize if not
   function arrayize(v, empty) {
