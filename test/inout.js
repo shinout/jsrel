@@ -172,10 +172,18 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       assert.equal(dump, redump)
     },
 
-     "compression rate" : function(v) {
+    "compression rate" : function(v) {
       var comp   = db.$export();
       var nocomp = db.$export(true);
       assert.isTrue(comp.length * 2 < nocomp.length)
+    }
+  },
+
+  "SQL": {
+    topic: db,
+
+    "get" : function(db) {
+      var sql = db.toSQL();
     }
   }
 }).export(module);

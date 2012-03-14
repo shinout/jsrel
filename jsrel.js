@@ -179,6 +179,15 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   };
 
   /**
+   * jsrel.$export(noCompress)
+   **/
+  JSRel.prototype.toSQL = function() {
+    return this.tables.map(function(tbl) {
+      return this.table(tbl)._toSQL();
+    }, this).join(";\n") + ";\n";
+  };
+
+  /**
    * jsrel.close()
    **/
   JSRel.prototype.close = function() {
@@ -236,16 +245,19 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     _BOOL   : { value : 1, writable: false },
     _NUM    : { value : 2, writable: false },
     _STR    : { value : 3, writable: false },
-    TYPES   : { value : {1: "boolean", 2: "number", 3: "string"}, writable: false },
+    _INT    : { value : 4, writable: false },
+    _CHRS   : { value : 5, writable: false },
+    TYPES   : { value : {1: "boolean", 2: "number", 3: "string", 4: "number", 5: "string"}, writable: false },
     ID_TEMP : { value : 0, writable: false },
     INVALID_COLUMNS: { value: 
       [ 'id', 'ins_at', 'upd_at',
-        'on', 'off', 'str', 'num', 'bool',
+        'on', 'off', 'str', 'num', 'bool', 'int', 'float', 'text', 'chars', 'double', 'string', 'number', 'boolean',
         'order', 'limit', 'offset', 'join', "where", "as", "select", "explain"
       ], writable: false },
     AUTO: { value: { id: true, ins_at: true, upd_at: true }, writable : false },
     NOINDEX_MIN_LIMIT : { value: 100, writable: false },
-    COLKEYS : { value : [ 'name', 'type', 'required', '_default', 'rel' ], writable: false }
+    COLKEYS : { value : [ 'name', 'type', 'required', '_default', 'rel', 'sqltype' ], writable: false },
+    TYPE_SQLS : { value : { 1: 'tinyint(1)', 2: 'double', 3: 'text', 4: 'int', 5: 'varchar(255)' }, writable: false }
   });
 
   /**
@@ -315,6 +327,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }, this);
 
     if (!options.sub && this.db._autosave) this.db.save(); // autosave
+    // else if (this.db._tx) this.db._tx.push([JSRel._DEL, this.name, obj.id]);
 
     return Utils.copy(obj);
   };
@@ -434,6 +447,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }, this);
 
     if (!options.sub && this.db._autosave) this.db.save(); // autosave
+    // else if (this.db._tx) this.db._tx.push([JSRel._UPD, this.name, updKeys.reduce(function(ret, col) {
+    //   ret[col] = old[col];
+    //   return ret;
+    // }, {})]);
 
     return updObj;
   };
@@ -627,6 +644,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       // delete object
       delete this._data[obj.id];
 
+      // if (options.sub) {
+      //   var txlist = [[JSRel._INS, this.name, Utils.copy(obj)]];
+      // }
+      // var subs = [];
+
       // delete referring columns
       Object.keys(this._referreds).forEach(function(exTable) {
         var query = {}, info = this._referreds[exTable];
@@ -650,6 +672,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }, this);
 
     if (!options.sub && this.db._autosave) this.db.save(); // autosave
+    // else if (options.sub && this.db._tx) options.sub.push([JSRel._INS, this.name, obj, subs]);
+    // else if (this.db._tx) this.db._tx.push(txlist);
 
     return this;
   };
@@ -749,6 +773,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
   /**
    * cast obj[colName]
+   * FIXME sql compatible type!
    **/
   Table.prototype._cast = function(colName, obj) {
     var val = obj[colName];
@@ -815,9 +840,14 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       return Table.COLKEYS.map(function(key) { return colInfo[key] })
     }, this);
 
+    var boolTypes = cols.reduce(function(ret, col) {
+      if (colInfos[col].type == Table._BOOL) ret[col] = 1;
+      return ret;
+    }, {});
+
     var compressedData = Object.keys(data).map(function(id) {
       var obj = data[id];
-      return cols.map(function(col) { return obj[col] });
+      return cols.map(function(col) { return (boolTypes[col]) ? obj[col] ? 1 : 0 : obj[col] });
     }, this);
 
     var compressedIndexes = Object.keys(indexes).map(function(idxName) {
@@ -847,9 +877,14 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       return col;
     });
 
+    var boolTypes = cols.reduce(function(ret, col) {
+      if (colInfos[col].type == Table._BOOL) ret[col] = 1;
+      return ret;
+    }, {});
+
     var data = darr.reduce(function(ret, d, k) {
       var record = {};
-      cols.forEach(function(col, k) { record[col] = d[k] });
+      cols.forEach(function(col, k) { record[col] = boolTypes[col] ? !!d[k] : d[k] });
       ret[record.id] = record;
       return ret;
     }, {});
@@ -908,6 +943,59 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   Table._compressRels   = function(rels, referreds) { return [rels, referreds] };
   Table._decompressRels = function(c) { return c };
 
+  function bq(v) { return "`"+v+"`" }
+
+  Table._columnToSQL = function(info) {
+    var colType = Table.TYPE_SQLS[info.sqltype];
+    var stmt = [bq(info.name), colType];
+    if (info.required) stmt.push("NOT NULL");
+    if (info._default != null) {
+      var defa = (info.type == Table._BOOL) 
+        ? info._default ? 1 : 0
+        : (info.type == Table._STR) ? quo(info._default) : info._default;
+      stmt.push("DEFAULT", defa);
+    }
+    if (info.name == "id") stmt.push("PRIMARY KEY AUTO_INCREMENT");
+    return stmt.join(" ");
+  };
+
+  Table._idxToSQL = function(name, list) {
+    var uniq = (list._unique) ? 'UNIQUE ' : '';
+    return [uniq + 'INDEX', '(' + name + ')'].join(' ');
+  };
+
+  /**
+   * SQL
+   **/
+  Table.prototype._toSQL = function() {
+    // structure
+    var substmts = this.columns.map(function(col){ return Table._columnToSQL(this._colInfos[col]) }, this);
+    Object.keys(this._indexes).forEach(function(idxName) {
+      var idxSQL = Table._idxToSQL(idxName, this._indexes[idxName]);
+      if (idxSQL) substmts.push(idxSQL);
+    }, this);
+    Object.keys(this._rels).forEach(function(fkey) {
+      var exTbl = this._rels[fkey];
+      var stmt = "FOREIGN KEY (" + fkey + "_id) REFERENCES " + exTbl + '(id)';
+      var required = this.db.table(exTbl)._referreds[this.name][fkey];
+      if (required) stmt += " ON UPDATE CASCADE ON DELETE CASCADE";
+      else stmt += " ON UPDATE NO ACTION ON DELETE SET NULL";
+      substmts.push(stmt);
+    }, this)
+
+    return "CREATE TABLE " + bq(this.name) + "(" + substmts.join(",") + ")";
+
+
+    // data
+    var ret = new Array(this._indexes.id.length);
+    var colsStr = this.columns.map(bq).join(",");
+    var stmt = ["INSERT INTO", bq(this.name), "(", colsStr ,") VALUES"].join(" ");
+    this._indexes.id.map(function(id, i) {
+      var record = this._data[id];
+      var vals = this.columns.map(function(col) { return quo(record[col])}).join(",");
+      ret[i] = [ "(", vals ,")"].join(" ");
+    }, this);
+  };
   /**
    * parse raw stringified data
    **/
@@ -972,7 +1060,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
     var columnNames = Object.keys(colInfos);
     columnNames.forEach(function(col) {
-      Utils.assert(col.match(/[,.]/) == null, "comma and dot cannot be included in a column name.");
+      Utils.assert(col.match(/[,.`"']/) == null, "comma, dot and quotations cannot be included in a column name.");
     });
 
     // parsing and registering columns
@@ -1021,7 +1109,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * set index columns
    **/
   Table.prototype._setIndex = function(cols, isUniq, ids) {
-    var types = cols.map(function(col) { return this._colInfos[col].type }, this);
+    var types = cols.map(function(col) {
+      var ret = this._colInfos[col].type;
+      if (ret == Table._STR) this._colInfos[col].sqltype = Table._CHRS;
+      return ret;
+    }, this);
     // if duplicated, the former is preferred
     var idxName = cols.join(",");
     if (this._indexes[idxName] != null) return;
@@ -1200,29 +1292,59 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * parse definition of columns
    **/
   Table.prototype._parseColumn = function(colName, columnOption) {
-    var colObj = { name: colName, type: Table._STR, required: false, _default: null, rel : false }; // default object
+    var colObj = { name: colName, type: Table._STR, sqltype: Table._STR, required: false, _default: null, rel : false }; // default object
 
     switch (columnOption) { // @see README.md #column description
       case true :
         colObj.required = true;
         break;
 
-      case "str" :
-      case false :
+      case "str"  :
+      case "text" :
+      case false  :
+        break;
+
+      case "req":
+        colObj.type = Table._STR;
+        colObj.sqltype = Table._CHRS;
+        colObj.required = true;
+        break;
+
+      case "not":
+      case "chars":
+      case "":
+        colObj.type = Table._STR;
+        colObj.sqltype = Table._CHRS;
         break;
 
       case 1 :
         colObj.type = Table._NUM;
+        colObj.sqltype = Table._INT;
         colObj.required = true;
         break;
 
-      case "num" :
+      case "int" :
       case 0 :
         colObj.type = Table._NUM;
+        colObj.sqltype = Table._INT;
+        break;
+
+      case "num" :
+      case "float" :
+        colObj.type = colObj.sqltype = Table._NUM;
+        break;
+
+      case 1.1 :
+        colObj.type = colObj.sqltype = Table._NUM;
+        break;
+
+      case 0.1 :
+        colObj.type = colObj.sqltype = Table._NUM;
+        colObj.required = true;
         break;
 
       case "on" :
-        colObj.type = Table._BOOL;
+        colObj.type = colObj.sqltype = Table._BOOL;
         colObj._default = true;
         break;
 
@@ -1237,13 +1359,25 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
         Utils.assert(columnOption && columnOption.type, 'invalid column description.');
         switch (columnOption.type) {
-          case 'str'  : colObj.type = Table._STR;  break;
-          case 'num'  : colObj.type = Table._NUM;  break;
-          case 'bool' : colObj.type = Table._BOOL; break;
+          case 'text'   :
+          case 'string' :
+          case 'str'    : colObj.type = colObj.sqltype = Table._STR; break;
+
+          case 'double' :
+          case 'float'  :
+          case 'number' :
+          case 'num'    : colObj.type = colObj.sqltype = Table._NUM;  break;
+
+          case 'boolean' :
+          case 'bool' : colObj.type = colObj.sqltype = Table._BOOL; break;
+
+          case 'int'  : colObj.type = Table._NUM;  colObj.sqltype = Table._INT;  break;
+          case 'chars': colObj.type = Table._STR;  colObj.sqltype = Table._CHRS; break;
 
           default: // must be table name
             colObj.name += '_id';
             colObj.type = Table._NUM;
+            colObj.sqltype = Table._INT;
             colObj.rel = columnOption.type;
             if (columnOption.required == undefined) columnOption.required = true; // in related columns, values are required by default
             break;
@@ -1254,6 +1388,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
             "type of the default value", columnOption._default, "does not match", Table.TYPES[colObj.type],
             "in", colObj.name);
           colObj._default = columnOption._default;
+          if (colObj.sqltype == Table._STR) colObj.sqltype = Table._CHRS;
         }
         if (columnOption.required) colObj.required = !!columnOption.required;
         break;

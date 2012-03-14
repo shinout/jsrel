@@ -63,6 +63,7 @@ suitable applications
 
 - rich client applications
 - tiny serverside applications
+- client caching
 - mock DB
 
 NOT suitable for applications which require scalability.
@@ -164,6 +165,7 @@ JSRel API documentation
 - jsrel.table(tableName)
 - jsrel.save()
 - jsrel.$export()
+- jsrel.toSQL()
 - jsrel.id
 - jsrel.name
 - jsrel.tables
@@ -386,6 +388,9 @@ Exports current data as the format above.
 Returns data.
 
 As "export" is a reserved word in JavaScript, used "$export" instead.
+
+### jsrel.toSQL() ###
+(unstable) Gets SQL string from the current schema.
 
 ### jsrel.id ###
 (ReadOnly) gets id
