@@ -11,56 +11,78 @@ API at a glance
 ----------------
 First, define the schema
 
-    var db = JSRel.use("dbname", {schema: 
-      { user: { name : true, is_activated: "on", $uniques: "name"},
-        book: { title: true, price: 1, author: "user", $indexes: "title" },
-    }});
+```js
+var db = JSRel.use("dbname", {schema: 
+  { user: { name : true, is_activated: "on", $uniques: "name"},
+    book: { title: true, price: 1, author: "user", $indexes: "title" },
+}});
+```
 
 Second, insert data
 
-    var u1 = db.ins('user', {name: 'shinout'});
-    var u2 = db.ins('user', {name: 'xxxxx', is_activated: false});
-    var b1 = db.ins('book', {title: 'how to jsrel', price: 10, author: u1});
-    var b2 = db.ins('book', {title: 'JSRel API doc', price: 20, author_id: u1.id});
+```js
+var u1 = db.ins('user', {name: 'shinout'});
+var u2 = db.ins('user', {name: 'xxxxx', is_activated: false});
+var b1 = db.ins('book', {title: 'how to jsrel', price: 10, author: u1});
+var b2 = db.ins('book', {title: 'JSRel API doc', price: 20, author_id: u1.id});
+```
 
 Find them!
 
-    var users = db.find('user', {is_activated: true});
+```js
+var users = db.find('user', {is_activated: true});
+```
 
 Get one!
 
-    var shinout = db.one('user', {name: "shinout"});
+```js
+var shinout = db.one('user', {name: "shinout"});
+```
 
 Greater Than, Less Equal!
 
-    var booksGreaterThan5  = db.find('book', { price: {gt: 5} } );
-    var booksLessEqual15   = db.find('book', { price: {le: 15} } );
+```js
+var booksGreaterThan5  = db.find('book', { price: {gt: 5} } );
+var booksLessEqual15   = db.find('book', { price: {le: 15} } );
+```
 
 Like xxx%
 
-    var booksLikeJS = db.find('book', { title: {like$: "JS"} } );
+```js
+var booksLikeJS = db.find('book', { title: {like$: "JS"} } );
+```
 
 Join!
 
-    var usersJoinBooks = db.find('user', {is_activated: true}, {join: "book"});
+```js
+var usersJoinBooks = db.find('user', {is_activated: true}, {join: "book"});
+```
 
 OrderBy! Offset! Limit!
 
-    var users = db.find('user', null, {order: "name", limit : 10, offset : 3} );
+```js
+var users = db.find('user', null, {order: "name", limit : 10, offset : 3} );
+```
 
 
 Perpetuation
 
-    db.save();
+```js
+db.save();
+```
 
 Export / Import
 
-    var str = db.$export();
+```js
+var str = db.$export();
     var newDB = JSRel.$import("newID", str);
+```
 
 dump as SQL!
 
-    var sql = db.toSQL();
+```js
+var sql = db.toSQL();
+```
 
 suitable applications
 ---------------------
@@ -79,18 +101,22 @@ Thinking about the separation of the Model layer.
 
 If we connect to DB asynchronously, we must handle lots of callbacks in a model method.
 
-    model.getUserBooks = function(name, callback) {
-      db.find("user", {name: name}, function(err, users) {
-        db.find("book", {user_id: users[0].id}, callback);
-      });
-    };
+```js
+model.getUserBooks = function(name, callback) {
+  db.find("user", {name: name}, function(err, users) {
+    db.find("book", {user_id: users[0].id}, callback);
+  });
+};
+```
 
 If we access to DB synchoronously, we can easily write human-readable model APIs.
 
-    model.getUserBooks = function(name) {
-      var user  = db.find("user", {name: "xxyy"})[0];
-      return db.find("book", {user_id: user.id});
-    };
+```js
+model.getUserBooks = function(name) {
+  var user  = db.find("user", {name: "xxyy"})[0];
+  return db.find("book", {user_id: user.id});
+};
+```
 
 Also, synchoronous codes have an advantage of error handling.
 
@@ -105,16 +131,20 @@ I prepared another JavaScript library for this purpose.
 
 Then, we can access model methods like
 
-    model.getUserBooks("user01", function(err, result) {
-    })
+```js
+model.getUserBooks("user01", function(err, result) {
+})
+```
 
 by defining
 
-    model.getUserBooks = function(name) {
-      var user  = db.find("user", {name: "xxyy"})[0];
-      if (!user) return [];
-      return db.find("book", {user_id: user.id});
-    };
+```js
+model.getUserBooks = function(name) {
+  var user  = db.find("user", {name: "xxyy"})[0];
+  if (!user) return [];
+  return db.find("book", {user_id: user.id});
+};
+```
 
 That is, try/catch and asynchronous APIs are automatically created via [standalone](https://github.com/shinout/standalone).
 
@@ -124,16 +154,22 @@ See **make it standalone** for detailed usage.
 installation
 -------------
 
-    $ npm install jsrel # Node.js
+```bash
+    $ npm install jsrel
+```
 
 When using in modern browsers, 
 
-    <script type="text/javascript" src="/path/to/SortedList.js"></script>
-    <script type="text/javascript" src="/path/to/jsrel.js"></script>
+```html
+<script type="text/javascript" src="/path/to/SortedList.js"></script>
+<script type="text/javascript" src="/path/to/jsrel.js"></script>
+```
 
 In Node.js,
 
-    var JSRel = require('jsrel');
+```js
+var JSRel = require('jsrel');
+```
 
 is the way to load the library.
 
@@ -141,7 +177,9 @@ In browsers, the variable "JSRel" is set to global.
 
 In Web Worker,
 
-    importScripts('/pathto/SortedList.js', '/pathto/jsrel.js');
+```js
+importScripts('/pathto/SortedList.js', '/pathto/jsrel.js');
+```
 
 See also **make it standalone**.
 
@@ -239,13 +277,15 @@ In this case, exporting the data to the main thread, we can manually handle and 
 
 #### SCHEMA JSON ####
 
-    {
-      tableName1: tableDescription,
-      tableName2: { 
-        columnName1 : columnDescription,
-        columnName2 : columnDescription
-      }
-    }
+```js
+{
+  tableName1: tableDescription,
+  tableName2: { 
+    columnName1 : columnDescription,
+    columnName2 : columnDescription
+  }
+}
+```
 
 **table description**
 
@@ -453,7 +493,9 @@ Gets SQL string from the current schema and data.
 ### jsrel.tables ###
 (ReadOnly) gets list of registered tables
 
-    [table1, table2, ...]
+```js
+[table1, table2, ...]
+```
 
 
 instanceof JSRel.Table (shown as table)
@@ -486,7 +528,9 @@ These are all automatically set.
 
 We can specify **id** in insertion.
     
-    table.ins({id: 11, name: "iPhone"});
+```js
+table.ins({id: 11, name: "iPhone"});
+```
 
 When the table already has the same id, an exception is thrown.
 
@@ -494,58 +538,72 @@ When the table already has the same id, an exception is thrown.
 #### relation handling in insertion ####
 OK, let's think upon the following schema.
 
-    var schema = { user: {
-        nickName : true,
-        fitstName: false,
-        lastName : false
-      },
-      card: {
-        title : true,
-        body  : true
-      },
-      user_card {
-        user: "user",
-        card: "card",
-        owner: {type : "user", required: false}
-        $uniques: { user_card: ["user", "card"] }
-      }
-    }
+```js
+var schema = { user: {
+    nickName : true,
+    fitstName: false,
+    lastName : false
+  },
+  card: {
+    title : true,
+    body  : true
+  },
+  user_card {
+    user: "user",
+    card: "card",
+    owner: {type : "user", required: false}
+    $uniques: { user_card: ["user", "card"] }
+  }
+}
+```
 
 First, inserts users and cards.
     
-    var jsrel = JSRel.use('sample', {schema: schema});
+```js
+var jsrel = JSRel.use('sample', {schema: schema});
     
-    var uTable = jsrel.table('user');
-    var shinout = uTable.ins({nickName: "shinout"});
-    var nishiko = uTable.ins({nickName: "nishiko"});
-    var cTable = jsrel.table('card');
-    var rabbit = uTable.ins({title: "rabbit", body: "It jumps!"});
-    var pot    = uTable.ins({title: "pot", body: "a tiny yellow magic pot"});
+var uTable = jsrel.table('user');
+var shinout = uTable.ins({nickName: "shinout"});
+var nishiko = uTable.ins({nickName: "nishiko"});
+var cTable = jsrel.table('card');
+var rabbit = uTable.ins({title: "rabbit", body: "It jumps!"});
+var pot    = uTable.ins({title: "pot", body: "a tiny yellow magic pot"});
+```
 
 
 Then, inserts these relations.
 
-    var ucTable = jsrel.table('user_card');
-    ucTable.ins({ user: shinout, card: rabbit });
+```js
+var ucTable = jsrel.table('user_card');
+ucTable.ins({ user: shinout, card: rabbit });
+```
 
 
 We can also insert these relation like
 
-    ucTable.ins({ user_id: nishiko.id, card_id: pot.id });
-    ucTable.ins({ user_id: 1, card_id: 2 }); // 1: shinout, 2: pot
+```js
+ucTable.ins({ user_id: nishiko.id, card_id: pot.id });
+ucTable.ins({ user_id: 1, card_id: 2 }); // 1: shinout, 2: pot
+```
 
 Remember that user_id and card_id are automatically generated and it represent the id column of each instance.
 When we pass an invalid id to these columns, an exception is thrown.
 
-    ucTable.ins({ user_id: 1, card_id: 5 }); // 1: shinout, 5: undefined!
+```js
+ucTable.ins({ user_id: 1, card_id: 5 }); // 1: shinout, 5: undefined!
+```
 
 When a relation column is not required, we can pass null.
 
-    ucTable.ins({ user: nishiko, card_id: 1, owner_id: null });
+```js
+ucTable.ins({ user: nishiko, card_id: 1, owner_id: null });
+```
 
 When duplicated, **xxxx_id priors to xxxx** (where xxxx is the name of the original column).
 
-    ucTable.ins({ user: nishiko, user_id: 1, card_id: 1 }); // user_id => 1
+```js
+ucTable.ins({ user: nishiko, user_id: 1, card_id: 1 }); // user_id => 1
+```
 
 
 ### table.upd(obj) ###
@@ -674,7 +732,9 @@ Returns a list of records.
 #### results ####
 Returns list of instances
 
-    [ {id: 1, name: "shinout"}, {id: 2, name: "nishiko"}, ...]
+```js
+[ {id: 1, name: "shinout"}, {id: 2, name: "nishiko"}, ...]
+```
 
 #### join description ####
 sample data
@@ -714,7 +774,9 @@ sample data
 
 **Fetching N:1 related objects**
 
-    var result = db.table('user').find({name: "shinout"}, {join: JOIN_VALUE});
+```js
+var result = db.table('user').find({name: "shinout"}, {join: JOIN_VALUE});
+```
 
 <table>
 <tr>
@@ -865,30 +927,37 @@ When a record is deleted, related records are also deleted.
 Think upon the schema.
 
 First, inserts users, cards and these relations.
-    var jsrel = JSRel.use('sample', {schema: schema});
-    
-    var uTable = jsrel.table('user');
-    var cTable = jsrel.table('card');
-    var ucTable = jsrel.table('user_card');
-    
-    var shinout = uTable.ins({nickName: "shinout"});
-    var nishiko = uTable.ins({nickName: "nishiko"});
-    
-    var rabbit = uTable.ins({title: "rabbit", body: "It jumps!"});
-    var pot    = uTable.ins({title: "pot", body: "a tiny yellow magic pot"});
-    
-    ucTable.ins({ user: shinout, card: rabbit });
-    ucTable.ins({ user: nishiko, card: rabbit });
-    ucTable.ins({ user: shinout, card: pot });
+
+```js
+var jsrel = JSRel.use('sample', {schema: schema});
+
+var uTable = jsrel.table('user');
+var cTable = jsrel.table('card');
+var ucTable = jsrel.table('user_card');
+
+var shinout = uTable.ins({nickName: "shinout"});
+var nishiko = uTable.ins({nickName: "nishiko"});
+
+var rabbit = uTable.ins({title: "rabbit", body: "It jumps!"});
+var pot    = uTable.ins({title: "pot", body: "a tiny yellow magic pot"});
+
+ucTable.ins({ user: shinout, card: rabbit });
+ucTable.ins({ user: nishiko, card: rabbit });
+ucTable.ins({ user: shinout, card: pot });
+```
 
 
 Next, delete shinout.
 
-    uTable.del(shinout);
+```js
+uTable.del(shinout);
+```
 
 Then, the dependent records ( shinout-rabbit, shinout-pot ) are also removed.
 
-    ucTable.find().length; // 1 (nishiko-rabbit)
+```js
+ucTable.find().length; // 1 (nishiko-rabbit)
+```
 
 
 shortcut
@@ -905,11 +974,15 @@ Then run the operation using the remaining arguments.
 
 for example,
 
-    jsre.ins('user', {nickName: "shinout"});
+```js
+jsre.ins('user', {nickName: "shinout"});
+```
 
 is completely equivalent to
 
-    jsrel.table('user').ins({nickName: "shinout"});
+```js
+jsrel.table('user').ins({nickName: "shinout"});
+```
 
 
 make it standalone
@@ -920,31 +993,35 @@ Here are the basic concept.
 
 master.js
 
-    standalone("worker.js", function(model) {
+```js
+standalone("worker.js", function(model) {
 
-      model.getSongsByArtist("the Beatles", function(err, songs) {
-        console.log(songs);
-      });
+  model.getSongsByArtist("the Beatles", function(err, songs) {
+    console.log(songs);
+  });
 
-    });
+});
+```
 
 
 worker.js
     
-    var db = JSRel.use("xxx", {schema: {
-      artist: {name: true},
-      song  : {title: true, artist: "artist"}
-    }});
-    var btls = db.ins("artist", {name: "the Beatles"});
-    db.ins("song", {title: "Help!", artist: btls});
-    db.ins("song", {title: "In My Life", artist: btls});
+```js
+var db = JSRel.use("xxx", {schema: {
+  artist: {name: true},
+  song  : {title: true, artist: "artist"}
+}});
+var btls = db.ins("artist", {name: "the Beatles"});
+db.ins("song", {title: "Help!", artist: btls});
+db.ins("song", {title: "In My Life", artist: btls});
 
-    var model = {
-      getSongsByArtist: function(name) {
-        return db.find("artist", {name : name}, {join: "song", select : "song"});
-      }
-    };
-    standalone(model);
+var model = {
+  getSongsByArtist: function(name) {
+    return db.find("artist", {name : name}, {join: "song", select : "song"});
+  }
+};
+standalone(model);
+```
 
 In master.js, we can use "getSongsByArtist" asynchronously, catching possible errors in err.
 
@@ -960,14 +1037,18 @@ We must be careful of loading scripts.
 
 in Node.js (worker.js)
 
-    var JSRel = require('jsrel');
-    var standalone = require('standalone');
+```js
+var JSRel = require('jsrel');
+var standalone = require('standalone');
+```
 
 This is enough.
 
 in browsers (worker.js)
 
-    importScripts('/pathto/SortedList.js', '/pathto/jsrel.js', '/pathto/standalone.js');
+```js
+importScripts('/pathto/SortedList.js', '/pathto/jsrel.js', '/pathto/standalone.js');
+```
 
 Don't forget to import **[SortedList](https://github.com/shinout/SortedList)** (which JSRel depends on). 
 
