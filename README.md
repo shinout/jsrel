@@ -58,6 +58,10 @@ Export / Import
     var str = db.$export();
     var newDB = JSRel.$import("newID", str);
 
+dump as SQL!
+
+    var sql = db.toSQL();
+
 suitable applications
 ---------------------
 
@@ -165,7 +169,7 @@ JSRel API documentation
 - jsrel.table(tableName)
 - jsrel.save()
 - jsrel.$export()
-- jsrel.toSQL()
+- jsrel.toSQL(options)
 - jsrel.id
 - jsrel.name
 - jsrel.tables
@@ -389,8 +393,54 @@ Returns data.
 
 As "export" is a reserved word in JavaScript, used "$export" instead.
 
-### jsrel.toSQL() ###
-(unstable) Gets SQL string from the current schema.
+### jsrel.toSQL(options) ###
+Gets SQL string from the current schema and data.
+
+**options**
+
+<table>
+<tr><th>option name</th>
+<td>type</td>
+<td>description</td>
+<td>default</td>
+<td>example</td></tr>
+
+<tr><th>noschema</th>
+<td>boolean</td>
+<td>if true, schema SQLs (create statements) are not generated.</td>
+<td>null</td>
+<td>true</td>
+</tr>
+
+<tr><th>nodrop</th>
+<td>boolean</td>
+<td>if true, drop statements are not generated.</td>
+<td>null</td>
+<td>true</td>
+</tr>
+
+<tr><th>nodata</th>
+<td>boolean</td>
+<td>if true, data SQLs (insert statements) are not generated.</td>
+<td>null</td>
+<td>true</td>
+</tr>
+
+<tr><th>type</th>
+<td>string</td>
+<td>type of RDBs. Currently, "mysql" is only tested.</td>
+<td>"mysql"</td>
+<td>"mysql"</td>
+</tr>
+
+<tr><th>engine</th>
+<td>string</td>
+<td>MySQL engine (only enabled when options.type is "mysql")</td>
+<td>"InnoDB"</td>
+<td>"MyISAM"</td>
+</tr>
+
+</table>
 
 ### jsrel.id ###
 (ReadOnly) gets id

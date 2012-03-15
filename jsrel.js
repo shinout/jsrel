@@ -56,13 +56,20 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     this.constructor._dbInfos[uniqId] = {db: this, storage: storage};
 
     var tables = Object.keys(tblInfos);
-    Object.defineProperty(this, "tables", {value: tables, writable: false});
 
     this._tblInfos = {};
 
     tables.forEach(function(tblName) {
       this._tblInfos[tblName] = new Table(tblName, this, format, tblInfos[tblName]);
     }, this); 
+    var tableRels = [];
+    tables.forEach(function(tblName) {
+      var tbl = this.table(tblName);
+      Object.keys(tbl._referreds).forEach(function(exTable) {
+        if (tbl._referreds[exTable]) tableRels.push([tblName, exTable]);
+      });
+    }, this);
+    Object.defineProperty(this, "tables", {value: tsort(tableRels), writable: false});
   };
 
   JSRel._dbInfos = {};
@@ -176,12 +183,25 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   };
 
   /**
-   * jsrel.$export(noCompress)
+   * jsrel.toSQL()
    **/
-  JSRel.prototype.toSQL = function() {
-    return this.tables.map(function(tbl) {
-      return this.table(tbl)._toSQL();
-    }, this).join(";\n") + ";\n";
+  JSRel.prototype.toSQL = function(options) {
+    options || (options = {type: "mysql", engine: 'InnoDB'});
+    var ret = [];
+    if (!options.noschema && !options.nodrop) ret.push(this.tables.map(function(tbl) {
+      return this.table(tbl)._toDropSQL(true);
+    }, this).reverse().join("\n"));
+   
+
+    if (!options.noschema) ret.push(this.tables.map(function(tbl) {
+      return this.table(tbl)._toCreateSQL({type: options.type, engine: options.engine});
+    }, this).join("\n"));
+
+    if (!options.nodata) ret.push( this.tables.map(function(tbl) {
+      return this.table(tbl)._toInsertSQL();
+    }, this).join("\n"));
+
+    return ret.join('\n');
   };
 
   /**
@@ -244,7 +264,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     _STR    : { value : 3, writable: false },
     _INT    : { value : 4, writable: false },
     _CHRS   : { value : 5, writable: false },
-    TYPES   : { value : {1: "boolean", 2: "number", 3: "string", 4: "number", 5: "string"}, writable: false },
+    _CHR2   : { value : 6, writable: false },
+    TYPES   : { value : {1: "boolean", 2: "number", 3: "string", 4: "number", 5: "string", 6: "string"}, writable: false },
     ID_TEMP : { value : 0, writable: false },
     INVALID_COLUMNS: { value: 
       [ 'id', 'ins_at', 'upd_at',
@@ -254,7 +275,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     AUTO: { value: { id: true, ins_at: true, upd_at: true }, writable : false },
     NOINDEX_MIN_LIMIT : { value: 100, writable: false },
     COLKEYS : { value : [ 'name', 'type', 'required', '_default', 'rel', 'sqltype' ], writable: false },
-    TYPE_SQLS : { value : { 1: 'tinyint(1)', 2: 'double', 3: 'text', 4: 'int', 5: 'varchar(255)' }, writable: false }
+    TYPE_SQLS : { value : { 1: 'tinyint(1)', 2: 'double', 3: 'text', 4: 'int', 5: 'varchar(255)', 6: 'varchar(160)' }, writable: false }
   });
 
   /**
@@ -954,6 +975,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   };
 
   Table._idxToSQL = function(name, list) {
+    if (name == 'id') return;
     var uniq = (list._unique) ? 'UNIQUE ' : '';
     return [uniq + 'INDEX', '(' + name + ')'].join(' ');
   };
@@ -961,7 +983,12 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   /**
    * SQL
    **/
-  Table.prototype._toSQL = function() {
+  Table.prototype._toDropSQL = function(ifExist) {
+    return "DROP TABLE " + (ifExist ? 'IF EXISTS ' : '') + bq(this.name) + ';';
+  };
+
+  Table.prototype._toCreateSQL = function(options) {
+    options || (options = {});
     // structure
     var substmts = this.columns.map(function(col){ return Table._columnToSQL(this._colInfos[col]) }, this);
     Object.keys(this._indexes).forEach(function(idxName) {
@@ -977,19 +1004,39 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       substmts.push(stmt);
     }, this)
 
-    return "CREATE TABLE " + bq(this.name) + "(" + substmts.join(",") + ")";
-
-
-    // data
-    var ret = new Array(this._indexes.id.length);
-    var colsStr = this.columns.map(bq).join(",");
-    var stmt = ["INSERT INTO", bq(this.name), "(", colsStr ,") VALUES"].join(" ");
-    this._indexes.id.map(function(id, i) {
-      var record = this._data[id];
-      var vals = this.columns.map(function(col) { return quo(record[col])}).join(",");
-      ret[i] = [ "(", vals ,")"].join(" ");
-    }, this);
+    return "CREATE TABLE " + bq(this.name) + "(" + substmts.join(",") + ")" 
+           + (options.type == "mysql" && options.engine ? ' ENGINE=' + options.engine : '') + ';';
   };
+
+  Table.prototype._toInsertSQL = function() {
+    var colInfos = this._colInfos;
+    var boolTypes = this.columns.reduce(function(ret, col) {
+      if (colInfos[col].type == Table._BOOL) ret[col] = 1;
+      return ret;
+    }, {});
+
+    var stmt = ["INSERT INTO ", bq(this.name), "(", this.columns.map(bq).join(",") ,") VALUES "].join(" ");
+    var ret = [];
+    var cur;
+    for (var i=0, l = this._indexes.id.length; i<l; i++) {
+      var id = this._indexes.id[i];
+      var record = this._data[id];
+      var vals = this.columns.map(function(col) {
+        var v = record[col];
+        return boolTypes[col] ? v ? 1 : 0 : (typeof v == "number") ? v : quo(v);
+      }).join(",");
+      if (i%1000 == 0) {
+        if (cur) ret.push(cur);
+        cur = {st : stmt, ar: []};
+      }
+      cur.ar.push('(' + vals + ')');
+    }
+    if (cur && cur.ar.length) ret.push(cur);
+    return ret.map(function(cur) {
+      return cur.st + cur.ar.join(',\n') + ';\n';
+    }).join("\n");
+  };
+
   /**
    * parse raw stringified data
    **/
@@ -1103,11 +1150,20 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * set index columns
    **/
   Table.prototype._setIndex = function(cols, isUniq, ids) {
+    var strCols = [];
     var types = cols.map(function(col) {
       var ret = this._colInfos[col].type;
-      if (ret == Table._STR) this._colInfos[col].sqltype = Table._CHRS;
+      if (ret == Table._STR) strCols.push(col);
       return ret;
     }, this);
+
+    // reduce bytesize for SQL index
+    var len = strCols.length;
+    // (len <= 2) || err('1000bytes');
+    strCols.forEach(function(col) {
+      this._colInfos[col].sqltype = (len > 1) ? Table._CHR2 : Table._CHRS;
+    }, this);
+
     // if duplicated, the former is preferred
     var idxName = cols.join(",");
     if (this._indexes[idxName] != null) return;
@@ -1742,7 +1798,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     return unique(Array.prototype.concat.apply([], arr));
   }
 
-  function quo(v) { return '"'+ v + '"'}
+  function quo(v) { return '"'+ v.toString().split('"').join('\\"') + '"'}
   function bq(v) { return "`"+v+"`" }
 
   // arrayize if not
@@ -1770,6 +1826,30 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }
     return ret;
   }
+
+  function tsort(edges) {
+    var nodes = {}, sorted = [], visited = {}, Node = function(id) { this.id = id, this.afters = [] };
+    edges.forEach(function(v) {
+      var from = v[0], to = v[1];
+      if (!nodes[from]) nodes[from] = new Node(from);
+      if (!nodes[to]) nodes[to]     = new Node(to);
+      nodes[from].afters.push(to);
+    });
+    Object.keys(nodes).forEach(function visit(idstr, ancestors) {
+      var node = nodes[idstr], id = node.id;
+      if (visited[idstr]) return;
+      if (!Array.isArray(ancestors)) ancestors = [];
+      ancestors.push(id);
+      visited[idstr] = true;
+      node.afters.forEach(function(afterID) {
+        (ancestors.indexOf(afterID) < 0) || err('closed chain : ' +  quo(afterID) + ' is in ' + quo(id));
+        visit(afterID.toString(), ancestors.map(function(v) { return v }));
+      });
+      sorted.unshift(id);
+    });
+    return sorted;
+  }
+
 
   return JSRel;
 

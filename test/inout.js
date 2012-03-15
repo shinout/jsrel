@@ -184,6 +184,7 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
 
     "get" : function(db) {
       var sql = db.toSQL();
+      // console.log(sql)
     }
   }
 }).export(module);
