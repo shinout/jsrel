@@ -143,6 +143,23 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
     }
   },
 
+  "reset db": {
+    topic: JSRel.use("dbToReset", {schema: {hoge:{fuga:true}}}),
+
+    "if no reset, loaded" : function(db) {
+      var newDB = JSRel.use(db.id, {schema: {xxxxx: {name:true}}});
+      var tbl = newDB.table("xxxxx")
+      assert.isUndefined(tbl);
+    },
+
+    "if reset, reset" : function(db) {
+      var newDB = JSRel.use("dbToReset", {unko: "fasd", reset: true, schema: {xxxxx: {name:true}}});
+      var tbl = newDB.table("xxxxx");
+      assert.isObject(tbl);
+    },
+
+  },
+
   "export/import": {
     topic: db,
 

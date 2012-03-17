@@ -268,6 +268,12 @@ In this case, exporting the data to the main thread, we can manually handle and 
 <td>DB schema</td>
 <td>(see <strong>SCHEMA JSON</strong>)</td></tr>
 
+<tr><th>reset</th>
+<td>boolean</td>
+<td>no (default false)</td>
+<td>if true, reset db with the given schema.</td>
+<td>true</td></tr>
+
 <tr><th>autosave</th>
 <td>boolean</td>
 <td>no (default false)</td>

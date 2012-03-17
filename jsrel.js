@@ -91,7 +91,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   JSRel.use = function(uniqId, options) {
     (uniqId) || err('uniqId is required and must be non-zero value.');
     uniqId = uniqId.toString();
-    if (this._dbInfos[uniqId]) return this._dbInfos[uniqId].db;
+    if (this._dbInfos[uniqId] && (!options || !options.reset)) return this._dbInfos[uniqId].db;
 
     (options) || err('options is required.');
 
@@ -102,7 +102,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     var format, tblInfos;
 
     var dbstr = storage.getItem(uniqId);
-    if (dbstr) {
+    if (dbstr && !options.reset) {
       try { var dbinfo = JSON.parse(dbstr) }
       catch (e) { throw new Error('Invalid JSON given. in db', quo(uniqId)) }
       format = dbinfo.f;
