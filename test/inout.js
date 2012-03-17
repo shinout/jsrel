@@ -153,6 +153,19 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       }
     },
 
+    "import fails when uniqId is duplicated" : function(v) {
+      try {
+        var newDB = JSRel.$import(__dirname + "/tmp/inout", db.$export());
+      }
+      catch (e) {
+        assert.match(e.message, /already exists/);
+      }
+    },
+
+    "import succees when uniqId is duplicated but forced" : function(v) {
+      var newDB = JSRel.$import(__dirname + "/tmp/inout", db.$export(), {force: true});
+    },
+
     "cloning" : function(v) {
       var comp  = db.$export();
       var newDB = JSRel.$import("anotherId", comp);

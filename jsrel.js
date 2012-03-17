@@ -121,12 +121,13 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   };
 
   /**
-   * JSRel.$import(uniqId, str)
+   * JSRel.$import(uniqId, str, options)
    **/
-  JSRel.$import = function(uniqId, str) {
+  JSRel.$import = function(uniqId, str, options) {
+    options || (options = {});
     (uniqId) || err('uniqId is required and must be non-zero value.');
     uniqId = uniqId.toString();
-    (this._dbInfos[uniqId] == null) || err("id", quo(uniqId), "already exists");
+    (options.force || this._dbInfos[uniqId] == null) || err("id", quo(uniqId), "already exists");
     // TODO UNIQID CHECK
     try { var d = JSON.parse(str) }
     catch (e) { throw new Error('Invalid format given.') }
