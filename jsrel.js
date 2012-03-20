@@ -188,18 +188,33 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    **/
   JSRel.prototype.toSQL = function(options) {
     options || (options = {type: "mysql", engine: 'InnoDB'});
+    if (options.rails) {
+      var datetime = function(v) {
+        function n2s(n){ return ("000"+n).match(/..$/) }
+        var t = new Date(v);
+        return t.getFullYear()+"-"+n2s(t.getMonth()+1)+"-"+n2s(t.getDate())+" "
+        +n2s(t.getHours())+":"+n2s(t.getMinutes())+":"+n2s(t.getSeconds());
+      };
+      (options.columns) || (options.columns = {});
+      (options.values) || (options.values = {});
+      options.columns.upd_at = "updated_at";
+      options.columns.ins_at = "created_at";
+      options.values.upd_at = datetime;
+      options.values.ins_at = datetime;
+    }
+
     var ret = [];
+
     if (!options.noschema && !options.nodrop) ret.push(this.tables.map(function(tbl) {
-      return this.table(tbl)._toDropSQL(true);
+      return this.table(tbl)._toDropSQL(options);
     }, this).reverse().join("\n"));
    
-
     if (!options.noschema) ret.push(this.tables.map(function(tbl) {
-      return this.table(tbl)._toCreateSQL({type: options.type, engine: options.engine});
+      return this.table(tbl)._toCreateSQL(options);
     }, this).join("\n"));
 
     if (!options.nodata) ret.push( this.tables.map(function(tbl) {
-      return this.table(tbl)._toInsertSQL();
+      return this.table(tbl)._toInsertSQL(options);
     }, this).join("\n"));
 
     return ret.join('\n');
@@ -961,9 +976,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   Table._compressRels   = function(rels, referreds) { return [rels, referreds] };
   Table._decompressRels = function(c) { return c };
 
-  Table._columnToSQL = function(info) {
+  Table._columnToSQL = function(info, colConverts) {
     var colType = Table.TYPE_SQLS[info.sqltype];
-    var stmt = [bq(info.name), colType];
+    var name = (info.name in colConverts) ? colConverts[info.name] : info.name;
+    var stmt = [bq(name), colType];
     if (info.required) stmt.push("NOT NULL");
     if (info._default != null) {
       var defa = (info.type == Table._BOOL) 
@@ -971,12 +987,13 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         : (info.type == Table._STR) ? quo(info._default) : info._default;
       stmt.push("DEFAULT", defa);
     }
-    if (info.name == "id") stmt.push("PRIMARY KEY AUTO_INCREMENT");
+    if (name == "id") stmt.push("PRIMARY KEY AUTO_INCREMENT");
     return stmt.join(" ");
   };
 
-  Table._idxToSQL = function(name, list) {
+  Table._idxToSQL = function(name, list, colConverts) {
     if (name == 'id') return;
+    if (name in colConverts) name = colConverts[name];
     var uniq = (list._unique) ? 'UNIQUE ' : '';
     return [uniq + 'INDEX', '(' + name + ')'].join(' ');
   };
@@ -984,21 +1001,28 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   /**
    * SQL
    **/
-  Table.prototype._toDropSQL = function(ifExist) {
+  Table.prototype._toDropSQL = function(options) {
+    var ifExist = true;
     return "DROP TABLE " + (ifExist ? 'IF EXISTS ' : '') + bq(this.name) + ';';
   };
 
   Table.prototype._toCreateSQL = function(options) {
     options || (options = {});
+    var colConverts = options.columns || {};
+    delete colConverts.id; // TODO alert to developers.
+
     // structure
-    var substmts = this.columns.map(function(col){ return Table._columnToSQL(this._colInfos[col]) }, this);
+    var substmts = this.columns.map(function(col){ return Table._columnToSQL(this._colInfos[col], colConverts) }, this);
+
     Object.keys(this._indexes).forEach(function(idxName) {
-      var idxSQL = Table._idxToSQL(idxName, this._indexes[idxName]);
+      var idxSQL = Table._idxToSQL(idxName, this._indexes[idxName], colConverts);
       if (idxSQL) substmts.push(idxSQL);
     }, this);
+
     Object.keys(this._rels).forEach(function(fkey) {
       var exTbl = this._rels[fkey];
-      var stmt = "FOREIGN KEY (" + fkey + "_id) REFERENCES " + exTbl + '(id)';
+      var fkey_disp = (fkey in colConverts) ? colConverts[fkey] : (fkey + "_id");
+      var stmt = "FOREIGN KEY (" + fkey_disp + ") REFERENCES " + exTbl + '(id)';
       var required = this.db.table(exTbl)._referreds[this.name][fkey];
       if (required) stmt += " ON UPDATE CASCADE ON DELETE CASCADE";
       else stmt += " ON UPDATE NO ACTION ON DELETE SET NULL";
@@ -1009,14 +1033,26 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
            + (options.type == "mysql" && options.engine ? ' ENGINE=' + options.engine : '') + ';';
   };
 
-  Table.prototype._toInsertSQL = function() {
+  Table.prototype._toInsertSQL = function(options) {
+    options || (options = {});
+    var colConverts = options.columns || {};
+    delete colConverts.id; // TODO alert to developers.
+
     var colInfos = this._colInfos;
     var boolTypes = this.columns.reduce(function(ret, col) {
       if (colInfos[col].type == Table._BOOL) ret[col] = 1;
       return ret;
     }, {});
 
-    var stmt = ["INSERT INTO ", bq(this.name), "(", this.columns.map(bq).join(",") ,") VALUES "].join(" ");
+    var columnNames = this.columns.map(function(name) {
+      return (name in colConverts) ? colConverts[name] : name;
+    });
+
+    var valConverts = options.values || {};
+    Object.keys(valConverts).forEach(function(col) {
+      if (typeof valConverts[col] != "function") delete valConverts[col];
+    });
+    var stmt = ["INSERT INTO ", bq(this.name), "(", columnNames.map(bq).join(",") ,") VALUES "].join(" ");
     var ret = [];
     var cur;
     for (var i=0, l = this._indexes.id.length; i<l; i++) {
@@ -1024,6 +1060,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       var record = this._data[id];
       var vals = this.columns.map(function(col) {
         var v = record[col];
+        if (col in valConverts) v = valConverts[col](v);
         return boolTypes[col] ? v ? 1 : 0 : (typeof v == "number") ? v : quo(v);
       }).join(",");
       if (i%1000 == 0) {

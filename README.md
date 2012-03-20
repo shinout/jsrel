@@ -489,6 +489,13 @@ Gets SQL string from the current schema and data.
 <td>"MyISAM"</td>
 </tr>
 
+<tr><th>rails (unstable)</th>
+<td>boolean</td>
+<td>if true, rails-like date format (created_at, inserted_at) is output.</td>
+<td>null</td>
+<td>true</td>
+</tr>
+
 </table>
 
 ### jsrel.id ###

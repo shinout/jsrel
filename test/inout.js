@@ -212,9 +212,20 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
   "SQL": {
     topic: db,
 
-    "get" : function(db) {
-      var sql = db.toSQL();
-      // console.log(sql)
+    "rails" : function(db) {
+      var datetime = function(v) {
+        function n2s(n){ return ("000"+n).match(/..$/) }
+        var t = new Date(v);
+        return t.getFullYear()+"-"+n2s(t.getMonth()+1)+"-"+n2s(t.getDate())+" "
+        +n2s(t.getHours())+":"+n2s(t.getMinutes())+":"+n2s(t.getSeconds());
+      };
+      var sql = db.toSQL({
+        columns: {upd_at: "updated_at", ins_at: "created_at"},
+        values : {upd_at: datetime, ins_at: datetime},
+      });
+
+      var railsSQL = db.toSQL({rails: true});
+      assert.equal(sql, railsSQL)
     }
   }
 }).export(module);
