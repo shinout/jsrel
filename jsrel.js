@@ -599,7 +599,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       // inner join filter
       keys = keys.filter(function(id) {
         var joinCols = joins[id];
-        if (!joinCols) return false;
+        if (!joinCols) joinCols = {};
         return reqCols.every(function(col) { return joinCols[col] });
       }, this);
     }

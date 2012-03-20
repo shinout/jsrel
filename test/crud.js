@@ -74,6 +74,8 @@ Object.keys(artists).forEach(function(name) {
   });
 });
 
+artistTbl.ins({name: "shinout"}); // who has no songs. (actually, I have some in MySpace!!)
+
 
 vows.describe('== TESTING CRUD ==').addBatch({
 
@@ -261,6 +263,18 @@ vows.describe('== TESTING CRUD ==').addBatch({
       artists.forEach(function(artist) {
         assert.lengthOf(artist.songs, 5);
       })
+    },
+
+    "inner join": function(tbl) {
+      var report = {};
+      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs" } }, explain: report, select: "name" });
+      assert.lengthOf(artists, 8);
+    },
+
+    "outer join": function(tbl) {
+      var report = {};
+      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs", outer: true } }, explain: report, select: "name" });
+      assert.lengthOf(artists, 9);
     },
   },
 
