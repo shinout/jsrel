@@ -1525,7 +1525,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       if (joins && joinCols && joinCols.length) {
         ret.forEach(function(obj) {
           joinCols.forEach(function(col) {
-            obj[col] = joins[obj.id][col];
+            obj[col] = (joins[obj.id] == null) ? null : joins[obj.id][col];
           });
         });
       }

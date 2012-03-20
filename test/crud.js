@@ -273,7 +273,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
 
     "outer join": function(tbl) {
       var report = {};
-      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs", outer: true } }, explain: report, select: "name" });
+      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs", outer: true } }, explain: report });
       assert.lengthOf(artists, 9);
     },
   },
