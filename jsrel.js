@@ -1360,6 +1360,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     else { // len == 2
       var tbl = spldot[0];
       var col = spldot[1];
+      var referred = this._referreds[tbl];
+      var refCols = Object.keys(referred);
       (refCols) || err("table", quo(tbl), "is not referring table", quo(this.name));
       (refCols.indexOf(col) >= 0) || err("table", quo(tbl), "does not have a column", quo(col));
       joinInfo.tbl = tbl;
