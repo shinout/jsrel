@@ -395,7 +395,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
     },
 
     "an exception thrown." : function(msg) {
-      assert.match(msg, /"2" is not a valid id in relation table "book"/);
+      assert.match(msg, /invalid external id/);
     }
   },
 

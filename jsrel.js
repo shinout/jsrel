@@ -315,12 +315,17 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
     // check relations
     Object.keys(this._rels).forEach(function(col) {
-      var colName = col + "_id";
-      if (!this._colInfos[colName].required) return;
+      var idcol = col + "_id";
+      var exId = obj[idcol];
       var tbl = this.db.table(this._rels[col]);
-      var relId = col + "_id";
-      (tbl._data[obj[relId]]) ||
-        err(quo(obj[relId]), 'is not a valid id in relation table', quo(tbl.name), 'during insertion to', quo(this.name));
+      var required = this._colInfos[idcol].required;
+      if (!required && exId == null) return;
+      var exObj = tbl.one(exId);
+      if (!required && exObj == null) {
+        obj[idcol] = null;
+        return;
+      }
+      (exObj) || err("invalid external id", quo(idcol), ":", exId);
     }, this);
 
     // set id, ins_at, upd_at
@@ -411,6 +416,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         var required = this._colInfos[idcol].required;
         if (!required && exId == null) return;
         var exObj = this.db.one(tbl, exId);
+        if (!required && exObj == null) {
+          updObj[idcol] = null;
+          return;
+        }
         (exObj) || err("invalid external id", quo(idcol), ":", exId);
       }
     }, this)
