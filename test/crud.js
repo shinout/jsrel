@@ -273,8 +273,14 @@ vows.describe('== TESTING CRUD ==').addBatch({
 
     "outer join": function(tbl) {
       var report = {};
-      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs", outer: true } }, explain: report });
-      assert.lengthOf(artists, 9);
+      var shinout = tbl.one({name: "shinout"}, {join: {song : {order: {rate: "desc"}, as: "songs", outer: true } }, explain: report });
+      assert.isNull(shinout.songs);
+    },
+
+    "outer join (array)": function(tbl) {
+      var report = {};
+      var shinout = tbl.one({name: "shinout"}, {join: {song : {order: {rate: "desc"}, as: "songs", outer: "array" } }, explain: report });
+      assert.lengthOf(shinout.songs, 0);
     },
   },
 

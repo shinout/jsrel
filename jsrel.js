@@ -556,6 +556,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         joinCols.push(name);
         if (info.req) reqCols.push(name);
 
+        if (info.emptyArray) keys.forEach(function(id) {
+          if (!joins[id]) joins[id] = {};
+          if (!joins[id][name]) joins[id][name] = [];
+        });
+
         tblObj.find(info.query, info.options, {usedTables: _priv.usedTables}).forEach(function(result) {
           var id = result[idcol];
           if (!joins[id]) joins[id] = {};
@@ -589,7 +594,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
              });
            });
          }
-        }
+       }
       }, this);
 
       joinInfos[1].forEach(function(info) {
@@ -1295,6 +1300,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       if (typeof val == "object") {
         if (val.as) joinInfo.name = val.as;
         if (val.outer) joinInfo.req = false;
+        if (val.outer == "array") joinInfo.emptyArray = true;
         delete val.as;
         delete val.outer;
         delete val.explain;

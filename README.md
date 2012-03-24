@@ -900,10 +900,18 @@ var result = db.table('user').find({name: "shinout"}, {join: JOIN_VALUE});
 
 <tr>
 <td>13</td>
-<th>{user : {age : {gt: 27}, outer: true} }</th>
-<td>outer joining. Allow empty results in this subquery.</td>
-<td>[{id: 1, name: "mindia", "users": [{id: 2, name: "nishiko", age: 28}]}]</td>
+<th>{user : {age : {gt: 47}, outer: true} }</th>
+<td>outer joining. Records containing Empty 1:N subqueries can be remained with the column filled with null.</td>
+<td>[{id: 1, name: "mindia", "users": null}]</td>
 </tr>
+
+<tr>
+<td>13</td>
+<th>{user : {age : {gt: 47}, outer: "array"} }</th>
+<td>outer joining. Records containing Empty 1:N subqueries can be remained with the column filled with empty array.</td>
+<td>[{id: 1, name: "mindia", "users": [] }]</td>
+</tr>
+
 
 </table>
 
@@ -913,7 +921,7 @@ var result = db.table('user').find({name: "shinout"}, {join: JOIN_VALUE});
 
 <table>
 <tr>
-<td>14</td>
+<td>15</td>
 <th>{"card": {via: "user_card"} }</th>
 <td>get "card" related through "user_card"</td>
 <td>[{id: 1, name: "shinout", "card": [ {id:1, ...}, {id: 3, ...}] }]</td>
