@@ -310,7 +310,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       delete obj.upd_at;
     }
     else {
-      ["id", "ins_at", "upd_at"].forEach(function(col) { obj[col] = Number(obj[col]) });
+      ["id", "ins_at", "upd_at"].forEach(function(col) { if (col in obj) obj[col] = Number(obj[col]) });
     }
 
     // cast type if possible. Otherwise throw an exception
@@ -381,6 +381,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     options || (options = {});
     // checking id
     (obj && obj.id != null && obj.id != Table.ID_TEMP) || err('id is not found in the given object.');
+    obj.id = Number(obj.id);
     var old = this._data[obj.id];
     (old) || err("Cannot update. Object not found in table", this.name);
 
@@ -390,6 +391,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       delete obj.upd_at;
     }
     else {
+      if ("ins_at" in obj) obj.ins_at = Number(obj.ins_at);
       obj.upd_at = new Date().getTime();
     }
 
