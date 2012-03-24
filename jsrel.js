@@ -309,6 +309,9 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       delete obj.ins_at;
       delete obj.upd_at;
     }
+    else {
+      ["id", "ins_at", "upd_at"].forEach(function(col) { obj[col] = Number(obj[col]) });
+    }
 
     // cast type if possible. Otherwise throw an exception
     this.columns.forEach(function(col) { this._cast(col, obj) }, this);
