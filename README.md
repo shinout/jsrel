@@ -217,7 +217,7 @@ JSRel API documentation
 
 - table.columns
 - table.ins(obj)
-- table.upd(obj)
+- table.upd(obj, options)
 - table.find(query, options)
 - table.one(id)
 - table.one(query, options)
@@ -622,7 +622,7 @@ ucTable.ins({ user: nishiko, user_id: 1, card_id: 1 }); // user_id => 1
 ```
 
 
-### table.upd(obj) ###
+### table.upd(obj, options) ###
 Updates an existing record.
 **obj** must contains **id** key.
 Only the valid keys (compatible with columns) in **obj** is updated.
@@ -632,8 +632,25 @@ Throws an exception when you an invalid value with a valid key.
 Returns an instance of the updated record.
 It is NOT the same as the given argument.
 
-Relation handling is similar to **table.ins()**.
+#### relation updates ####
 
+updating related tables
+```js
+obj.rel_table = [relObj1, relObj2, ...];
+table.upd(obj, {append: append});
+```
+
+if **relObj** contains "id" column, updating the object.
+Otherwise, inserting the object.
+If **options.append** is false or not given, already existing related objects are deleted.
+
+If the main table is related to the **rel_table** multiply,
+you must specify the column like
+
+```js
+obj["rel_table.relcolumn"] = [relObj1, relObj2, ...];
+table.upd(obj, {append: append});
+```
 
 
 ### table.find(query, options) ###

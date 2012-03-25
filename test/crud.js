@@ -473,6 +473,40 @@ vows.describe('== TESTING CRUD ==').addBatch({
       assert.equal(v2.id, 95);
       assert.equal(v2.word, tag.word);
     },
+
+    "relations1 : new values": function(tbl) {
+      var tagJoinSongs = tbl.one(30, {join : "song_tag"});
+      var len = tagJoinSongs.song_tag.length;
+      tagJoinSongs.song_tag.push({song_id: 19});
+      tagJoinSongs.song_tag.push({song_id: 23});
+      tbl.upd(tagJoinSongs);
+      var tagJoinSongs2 = tbl.one(30, {join : "song_tag"});
+      assert.lengthOf(tagJoinSongs2.song_tag, len + 2);
+    },
+
+    "relations2 : update values": function(tbl) {
+      var tagJoinSongs = tbl.one(30, {join : "song_tag"});
+      var len = tagJoinSongs.song_tag.length;
+      tagJoinSongs.song_tag.pop();
+      tagJoinSongs.song_tag.shift();
+      tagJoinSongs.song_tag[0].song_id = 55;
+
+      tagJoinSongs.song_tag.push({song_id: 29});
+      tbl.upd(tagJoinSongs);
+      var tagJoinSongs2 = tbl.one(30, {join : "song_tag"});
+      assert.lengthOf(tagJoinSongs2.song_tag, len - 1);
+      assert.equal(tagJoinSongs2.song_tag[0].song_id, 55);
+    },
+
+    "relations3 : append values": function(tbl) {
+      var tagJoinSongs = tbl.one(33, {join : "song_tag"});
+      var len = tagJoinSongs.song_tag.length;
+      delete tagJoinSongs.song_tag;
+      tagJoinSongs.song_tag = [{song_id : 57}, {song_id: 77}];
+      tbl.upd(tagJoinSongs, { append: true });
+      var tagJoinSongs2 = tbl.one(33, {join : "song_tag"});
+      assert.lengthOf(tagJoinSongs2.song_tag, len + 2);
+    },
   },
 
   "deleting": {

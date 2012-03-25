@@ -412,11 +412,13 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
     }, this);
 
+
     // checking related tables
-    Object.keys(this._rels).forEach(function(col) {
+    updKeys.forEach(function(col) {
+      var tbl = this._rels[col];
+      if (!tbl) return;
       var idcol = col + "_id";
       if (idcol in updObj) {
-        var tbl = this._rels[col];
         var exId = updObj[idcol];
         var required = this._colInfos[idcol].required;
         if (!required && exId == null) return;
@@ -427,8 +429,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         }
         (exObj) || err("invalid external id", quo(idcol), ":", exId);
       }
-    }, this)
-
+    }, this);
     
     // remove old indexes
     var updIndexPoses = {};
@@ -494,15 +495,61 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
       cls[newval][updObj.id] = 1;
     }, this);
 
+    // updating 1:N objects
+    this._updateRelations(obj, updObj, options.append);
+
     if (!options.sub && this.db._autosave) this.db.save(); // autosave
     // else if (this.db._tx) this.db._tx.push([JSRel._UPD, this.name, updKeys.reduce(function(ret, col) {
     //   ret[col] = old[col];
     //   return ret;
     // }, {})]);
-
     return updObj;
   };
 
+  Table.prototype._updateRelations = function(obj, updObj, append) {
+    Object.keys(this._referreds).forEach(function(exTbl) {
+      var cols = Object.keys(this._referreds[exTbl]);
+      var updates = {};
+      if (cols.length == 1) {
+        var col = cols[0];
+        var arr = obj[exTbl] || obj[exTbl + "." + col]; // FIXME : non-array value is set to obj[exTbl] (rare)
+        if (!Array.isArray(arr)) return;
+        updates[col] = arr;
+      }
+      else {
+        cols.forEach(function(col) {
+          var arr = obj[exTbl + "." + col];
+          if (!Array.isArray(arr)) return;
+        });
+        updates[col] = arr;
+      }
+
+      Object.keys(updates).forEach(function(col) {
+        var arr = updates[col];
+        var idhash = arr.reduce(function(o, v) {
+          if (v.id) o[v.id] = v;
+          return o;
+        }, {});
+
+        var query = {};
+        query[col + "_id"] = updObj.id;
+        var tbl = this.db.table(exTbl);
+        var oldIds = tbl.find(query, {select: "id"});
+        // delete related objects
+        if (!append) oldIds.forEach(function(id) { if (!idhash[id]) tbl.del(id) });
+        // update related objects
+        oldIds.forEach(function(id) { if (idhash[id]) tbl.upd(idhash[id]) });
+        // insert new objects
+        arr.forEach(function(v) {
+          if (v.id) return;
+          v[col + "_id"] = updObj.id;
+          tbl.ins(v);
+        });
+      }, this);
+
+    }, this);
+
+  };
 
 
   /**
