@@ -381,7 +381,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   };
 
 
-  Table.prototype._insertRelations = function(obj, updObj) {
+  Table.prototype._insertRelations = function(obj, insObj) {
     Object.keys(this._referreds).forEach(function(exTbl) {
       var cols = Object.keys(this._referreds[exTbl]);
       var inserts = {};
@@ -395,15 +395,15 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         cols.forEach(function(col) {
           var arr = obj[exTbl + "." + col];
           if (!Array.isArray(arr)) return;
+          inserts[col] = arr;
         });
-        inserts[col] = arr;
       }
 
       Object.keys(inserts).forEach(function(col) {
         var arr = inserts[col];
         var tbl = this.db.table(exTbl);
         inserts[col].forEach(function(v) {
-          v[col + "_id"] = updObj.id;
+          v[col + "_id"] = insObj.id;
           tbl.ins(v);
         });
       }, this);
@@ -562,8 +562,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         cols.forEach(function(col) {
           var arr = obj[exTbl + "." + col];
           if (!Array.isArray(arr)) return;
+          updates[col] = arr;
         });
-        updates[col] = arr;
       }
 
       Object.keys(updates).forEach(function(col) {
