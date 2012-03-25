@@ -638,7 +638,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * table.one(query, options)
    **/
   Table.prototype.one = function(query, options, _priv) {
-    if (typeof query == "number") {
+    if (typeof query == "number" || !isNaN(Number(query))) {
       // if (!options && !_priv) return this._data[query] || null;
       query = {id : query};
     }
