@@ -314,42 +314,46 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }
 
     // cast type if possible. Otherwise throw an exception
-    this.columns.forEach(function(col) { this._cast(col, obj) }, this);
+    var insObj = {};
+    this.columns.forEach(function(col) {
+      insObj[col] = obj[col];
+      this._cast(col, insObj);
+    }, this);
 
     // check relations
     Object.keys(this._rels).forEach(function(col) {
       var idcol = col + "_id";
-      var exId = obj[idcol];
+      var exId = insObj[idcol];
       var tbl = this.db.table(this._rels[col]);
       var required = this._colInfos[idcol].required;
       if (!required && exId == null) return;
       var exObj = tbl.one(exId);
       if (!required && exObj == null) {
-        obj[idcol] = null;
+        insObj[idcol] = null;
         return;
       }
       (exObj) || err("invalid external id", quo(idcol), ":", exId);
     }, this);
 
     // set id, ins_at, upd_at
-    obj.id || (obj.id = this._getNewId());
-    (!this._data[obj.id]) || err('the given id "', obj.id, '" already exists.');
-    (obj.id != Table.ID_TEMP) || err('id cannot be', Table.ID_TEMP);
+    insObj.id || (insObj.id = this._getNewId());
+    (!this._data[insObj.id]) || err('the given id "', insObj.id, '" already exists.');
+    (insObj.id != Table.ID_TEMP) || err('id cannot be', Table.ID_TEMP);
 
-    if (obj.ins_at == null) obj.ins_at = new Date().getTime();
-    if (obj.upd_at == null) obj.upd_at = obj.ins_at;
+    if (insObj.ins_at == null) insObj.ins_at = new Date().getTime();
+    if (insObj.upd_at == null) insObj.upd_at = insObj.ins_at;
 
     // insert a new value
-    this._data[obj.id] = obj;
+    this._data[insObj.id] = insObj;
 
     // unique index checking (including this._indexes.id)
     try {
       Object.keys(this._indexes).forEach(function(idxName) {
-        this._checkUnique(idxName, obj);
+        this._checkUnique(idxName, insObj);
       }, this);
     }
     catch (e) {
-      delete this._data[obj.id]; // rollback
+      delete this._data[insObj.id]; // rollback
       throw e;
       return null;
     }
@@ -357,22 +361,60 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     // save indexes
     Object.keys(this._indexes).forEach(function(columns) {
       var list = this._indexes[columns];
-      list.insert(obj.id);
+      list.insert(insObj.id);
     }, this);
 
     // save classes 
     Object.keys(this._classes).forEach(function(columns) {
       var cls = this._classes[columns];
-      var values = columns.split(',').map(function(col) { return obj[col] }).join(',');
+      var values = columns.split(',').map(function(col) { return insObj[col] }).join(',');
       if (!cls[values]) cls[values] = {};
-      cls[values][obj.id] = 1;
+      cls[values][insObj.id] = 1;
     }, this);
 
-    if (!options.sub && this.db._autosave) this.db.save(); // autosave
-    // else if (this.db._tx) this.db._tx.push([JSRel._DEL, this.name, obj.id]);
+    this._insertRelations(obj, insObj);
 
-    return copy(obj);
+    if (!options.sub && this.db._autosave) this.db.save(); // autosave
+    // else if (this.db._tx) this.db._tx.push([JSRel._DEL, this.name, insObj.id]);
+
+    return copy(insObj);
   };
+
+
+  Table.prototype._insertRelations = function(obj, updObj) {
+    Object.keys(this._referreds).forEach(function(exTbl) {
+      var cols = Object.keys(this._referreds[exTbl]);
+      var inserts = {};
+      if (cols.length == 1) {
+        var col = cols[0];
+        var arr = obj[exTbl] || obj[exTbl + "." + col]; // FIXME : non-array value is set to obj[exTbl] (rare)
+        if (!Array.isArray(arr)) return;
+        inserts[col] = arr;
+      }
+      else {
+        cols.forEach(function(col) {
+          var arr = obj[exTbl + "." + col];
+          if (!Array.isArray(arr)) return;
+        });
+        inserts[col] = arr;
+      }
+
+      Object.keys(inserts).forEach(function(col) {
+        var arr = inserts[col];
+        var tbl = this.db.table(exTbl);
+        inserts[col].forEach(function(v) {
+          v[col + "_id"] = updObj.id;
+          tbl.ins(v);
+        });
+      }, this);
+    }, this);
+
+  };
+
+
+
+
+
 
   /**
    * table.upd(obj)

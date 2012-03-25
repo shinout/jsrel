@@ -543,6 +543,25 @@ vows.describe('== TESTING CRUD ==').addBatch({
       assert.equal(report.searches[0].searchType, "index");
       assert.isNull(result);
     }
-  }
+  },
+
+  "inserting": {
+    topic : db,
+
+    "with 1:N relations" : function() {
+      var newUser = { name: "user1234", mail: "user1234@user1234.com" };
+      newUser.user_book = [];
+      for (var k=1; k<=10; k++) {
+        var bookData = { title: "book" + k, ISBN : "ISBN" + k, ASIN: "ASIN" + k, price: k * 1000 };
+        var newId = db.table("book").ins(bookData).id;
+        newUser.user_book.push({ b_id : newId });
+      }
+      var newId = db.ins("user", newUser).id;
+      var newU = db.one("user", newId, { join : { b : { via : "user_book" } } });
+      assert.lengthOf(newU.b, 10);
+    }
+  },
+
+
 
 }).export(module);

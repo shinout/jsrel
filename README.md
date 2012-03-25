@@ -621,6 +621,22 @@ When duplicated, **xxxx_id priors to xxxx** (where xxxx is the name of the origi
 ucTable.ins({ user: nishiko, user_id: 1, card_id: 1 }); // user_id => 1
 ```
 
+#### inserting relations ####
+
+```js
+obj.rel_table = [relObj1, relObj2, ...];
+table.ins(obj);
+```
+relObj1, relObj2 are also inserted to table "rel_table" containing the new id as the external key.
+
+If the main table is related to the **rel_table** multiply,
+you must specify the column like
+
+```js
+obj["rel_table.relcolumn"] = [relObj1, relObj2, ...];
+table.ins(obj);
+```
+
 
 ### table.upd(obj, options) ###
 Updates an existing record.
@@ -635,6 +651,7 @@ It is NOT the same as the given argument.
 #### relation updates ####
 
 updating related tables
+
 ```js
 obj.rel_table = [relObj1, relObj2, ...];
 table.upd(obj, {append: append});
