@@ -1349,10 +1349,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
           var reltype = this._resolveTableColumn(val.via, joinInfo);
           delete val.via;
           var subval = {};
-          Object.keys(val).forEach(function(k) {
-            if (k == "as") return;
-            subval[k] = val[k];
-            delete val[k];
+          Object.keys(val).forEach(function(option) {
+            if (option == "as") return;
+            subval[option] = val[option];
+            if (option != "outer") delete val[option];
           });
           val.join = {};
           val.join[k] = subval;
@@ -1617,7 +1617,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
   // report subquery
   Table._reportSubQuery = function(report, info, reltype) {
-    var subreport = {reltype: reltype, table: info.tbl, join_column: info.col, name: info.name, outer: !info.req };
+    var subreport = {reltype: reltype, table: info.tbl, join_column: info.col, name: info.name, outer: !info.req, emptyArray: !!info.emptyArray };
     info.options.explain = subreport;
     report.subqueries.push(subreport);
   };
