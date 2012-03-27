@@ -1646,14 +1646,18 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     (Array.isArray(cols)) || err("typeof options.select", cols, "must be string, null, or array");
 
     // when cols is array
-    var _joinCols = [];
-    cols = cols.filter(function(col) {
-      if (joinCols.indexOf(col) < 0) {
-        (this._colInfos[col]) || err("column", quo(col), "is not found in table", quo(this.name));
-        return true;
+    var inputCols = cols;
+    var _joinCols = [], cols = [];
+    inputCols.forEach(function(col) {
+      if (joins && joinCols && joinCols.indexOf(col) >= 0) {
+        _joinCols.push(col);
       }
-      _joinCols.push(col);
-      return false;
+      else if (this._colInfos[col]) {
+        cols.push(col);
+      }
+      else {
+        err("column", quo(col), "is not found in table", quo(this.name));
+      }
     }, this);
 
     var ret = keys.map(function(id) {
