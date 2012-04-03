@@ -209,6 +209,17 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
     }
   },
 
+  "free": {
+    topic: db,
+    "the db" : function(db) {
+      var dump = db.$export();
+      JSRel.$import("newName", dump);
+      assert.notEqual(JSRel.uniqIds.indexOf("newName"), -1);
+      JSRel.free("newName");
+      assert.equal(JSRel.uniqIds.indexOf("newName"), -1);
+    }
+  },
+
   "SQL": {
     topic: db,
 

@@ -412,8 +412,8 @@ Returns instance of JSRel.
 As "import" is a reserved word in JavaScript, used "$import" instead.
 
 
-### JSRel.uniqIds ###
-(ReadOnly Array) list of the registered uniqIds
+### JSRel.free(uniqId) ###
+Free the region of database **uniqId**.
 
 
 ### JSRel.isNode ###

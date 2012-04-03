@@ -137,6 +137,12 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     return new JSRel(uniqId, d.n, d.s, d.a, d.f, d.t);
   };
 
+  /**
+   * free the db
+   **/
+  JSRel.free = function(uniqId) {
+    delete this._dbInfos[uniqId];
+  };
 
 /**********
  * JSRel private methods
