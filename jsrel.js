@@ -56,21 +56,13 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     this.constructor._dbInfos[uniqId] = {db: this, storage: storage};
 
     var tables = Object.keys(tblInfos);
+    Object.defineProperty(this, "tables", {value: tables, writable: false});
 
     this._tblInfos = {};
 
     tables.forEach(function(tblName) {
       this._tblInfos[tblName] = new Table(tblName, this, format, tblInfos[tblName]);
     }, this); 
-    var tableRels = [];
-    tables.forEach(function(tblName) {
-      var tbl = this.table(tblName);
-      Object.keys(tbl._referreds).forEach(function(exTable) {
-        if (tbl._referreds[exTable]) tableRels.push([tblName, exTable]);
-      });
-    }, this);
-
-    Object.defineProperty(this, "tables", {value: tables, writable: false});
   };
 
   JSRel._dbInfos = {};
