@@ -1632,7 +1632,10 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     // when cols is one column
     if (typeof cols == "string") {
       if (cols == "id")
-        return (keys.length == 0 || typeof keys[0] == "number") ? keys : keys.map(function(v) { return Number(v) });
+        if (keys.length == 0 || typeof keys[0] == "number") {
+          return (keys.toArray) ? keys.toArray() : keys;
+        }
+        return keys.map(function(v) { return Number(v) });
 
       if (joinCols && joinCols.indexOf(cols) >= 0) return keys.map(function(id) { return joins[id][cols] }, this);
       (this._colInfos[cols]) || err("column", quo(cols), "is not found in table", quo(this.name));
