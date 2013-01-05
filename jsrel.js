@@ -35,8 +35,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   *  - name     : 
   *  - storage  : 
   *  - autosave : 
-  *  - format   : 
-  *  - tblInfos : 
+  *  - format   : format of tblData to parse
+  *  - tblData  : 
   *
   * public
   *  - id
@@ -48,20 +48,31 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   *  - _autosave : boolean
   *  - _tblInfos : { tableName => Table object }
   **/
-  var JSRel = function JSRel(uniqId, name, storage, autosave, format, tblInfos) {
+  var JSRel = function JSRel(uniqId, name, storage, autosave, format, tblData) {
     Object.defineProperty(this, 'id', { value : uniqId, writable: false });
     Object.defineProperty(this, 'name', { value : name, writable: false });
     this._storage  = storage;
     this._autosave = autosave;
     this.constructor._dbInfos[uniqId] = {db: this, storage: storage};
 
-    var tables = Object.keys(tblInfos);
+    var tables = Object.keys(tblData);
     Object.defineProperty(this, "tables", {value: tables, writable: false});
 
     this._tblInfos = {};
+    var methodName = "_parse" + format;
+    (typeof Table.prototype[methodName] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
 
+    // create table instances
     tables.forEach(function(tblName) {
-      this._tblInfos[tblName] = new Table(tblName, this, format, tblInfos[tblName]);
+      this._tblInfos[tblName] = new Table(tblName, this);
+    }, this);
+
+    // put column data to table instances
+    tables.forEach(function(tblName) {
+      var colData = tblData[tblName];
+      var table = this._tblInfos[tblName];
+      table[methodName](colData);
+      table._activate();
     }, this); 
   };
 
@@ -92,25 +103,25 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     var storage = this.storages[options.storage];
     (storage) || err('options.storage must be one of ["' + Object.keys(this.storages).join('", "') + '"]');
 
-    var format, tblInfos;
+    var format, tblData;
 
     var dbstr = storage.getItem(uniqId);
     if (dbstr && !options.reset) {
       try { var dbinfo = JSON.parse(dbstr) }
       catch (e) { throw new Error('Invalid JSON given. in db', quo(uniqId)) }
       format = dbinfo.f;
-      tblInfos = dbinfo.t;
+      tblData = dbinfo.t;
       (format) || err("format is not given in stringified data in db", uniqId);
     }
     else {
       (options.schema && typeof options.schema == 'object') || err('options.schema is required');
       (Object.keys(options.schema).length) || err('schema must contain at least one table');
       format = "Schema";
-      tblInfos = options.schema;
+      tblData = options.schema;
     }
     var name = (options.name != null) ? options.name.toString() : uniqId;
 
-    return new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblInfos);
+    return new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData);
   };
 
   /**
@@ -140,13 +151,12 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 /**********
  * JSRel private methods
  *********/
-  JSRel._compress = function(tblInfos) {
-    return Object.keys(tblInfos).reduce(function(ret, tblName) {
-      ret[tblName] = tblInfos[tblName]._compress();
+  JSRel._compress = function(tblData) {
+    return Object.keys(tblData).reduce(function(ret, tblName) {
+      ret[tblName] = tblData[tblName]._compress();
       return ret;
     }, {});
   };
-
 
 /**********
  * JSRel instance variables
@@ -236,13 +246,12 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    * arguments
    *   name    : (string) table name
    *   db      : (JSRel) 
-   *   format  : (string) type of tblInfo
-   *   tblInfo : (object) table info to create data from
    *
    * public
-   *  - columns : list of columns
-   *  - name    : table name
-   *  - db      : id of the parent JSRel (externally set)
+   *  - columns   : list of columns
+   *  - name      : table name
+   *  - db        : id of the parent JSRel (externally set)
+   *  - activated : activated or not
    *
    * private
    *  - _colInfos  : { colName => column Info object }
@@ -253,7 +262,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
    *  - _rels      : { RelName => related table name }
    *  - _referreds : { referring table name => { column => required or not} } (externally set)
    **/
-  var Table = function Table(name, db, format, tblInfo) {
+  var Table = function Table(name, db) {
     Object.defineProperty(this, 'name', { value : name, writable: false });
     Object.defineProperty(this, 'db',   { value : db, writable: false });
     // Private values. They can be directly input and replaced.
@@ -265,10 +274,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     this._rels      = {};
     this._referreds = {};
 
-    var parseMethod = "_parse" + format;
-    (typeof this[parseMethod] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
-    this[parseMethod](tblInfo);
-    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
+    this.activated  = false;
   };
 
   JSRel.Table = Table;
@@ -377,6 +383,14 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     // else if (this.db._tx) this.db._tx.push([JSRel._DEL, this.name, insObj.id]);
 
     return copy(insObj);
+  };
+
+  /**
+   * freeze the structure, and activate
+   **/
+  Table.prototype._activate = function() {
+    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
+    Object.defineProperty(this, 'activated', { value : true, writable: false });
   };
 
 
@@ -1183,7 +1197,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   };
 
   /**
-   * parse raw stringified data
+   * parse uncompressed data
    **/
   Table.prototype._parseRaw = function(info) {
     var indexes = info._indexes;
@@ -1198,7 +1212,6 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     }, this);
     return this;
   };
-
 
   /**
    * decompress compressed data
@@ -1219,32 +1232,32 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
 
   /**
-   * parse schema
+   * ( called only from JSRel#_parseSchema() )
    **/
-  Table.prototype._parseSchema = function(colInfos) {
-    colInfos = copy(colInfos);
+  Table.prototype._parseSchema = function(colData) {
+    colData = copy(colData);
     var tblName = this.name;
 
     Table.INVALID_COLUMNS.forEach(function(col) {
-      (colInfos[col] == null) || err(col, "is not allowed for a column name");
+      (colData[col] == null) || err(col, "is not allowed for a column name");
     });
 
 
     // getting indexes, uniques, classes
     var metaInfos = ["$indexes", "$uniques", "$classes"].reduce(function(ret, k) {
-      ret[k] = arrayize(colInfos[k], true);
-      delete colInfos[k];
+      ret[k] = arrayize(colData[k], true);
+      delete colData[k];
       return ret;
     }, {});
 
     // set default columns
-    colInfos.id = 1;
-    colInfos.upd_at = 1;
-    colInfos.ins_at = 1;
+    colData.id = 1;
+    colData.upd_at = 1;
+    colData.ins_at = 1;
     metaInfos.$uniques.unshift("id");
     metaInfos.$indexes.unshift("upd_at", "ins_at");
 
-    var columnNames = Object.keys(colInfos);
+    var columnNames = Object.keys(colData);
     columnNames.forEach(function(col) {
       (col.match(/[,.`"']/) == null) || err("comma, dot and quotations cannot be included in a column name.");
     });
@@ -1253,7 +1266,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     (columnNames.length > 3) || err('table', quo(tblName), 'must contain at least one column.');
 
     columnNames.forEach(function(colName) {
-      var parsed = this.__parseColumn(colName, colInfos[colName]);
+      var parsed = this.__parseColumn(colName, colData[colName]);
       (this._colInfos[parsed.name] == null) || err(quo(parsed.name), "is already registered.")
       this._colInfos[parsed.name] = parsed;
     }, this);
@@ -1286,8 +1299,6 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
     // setting _idxKeys
     this._idxKeys = Table._getIdxKeys(this._indexes);
-
-    return this;
   };
 
 
