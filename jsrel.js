@@ -69,7 +69,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
         if (tbl._referreds[exTable]) tableRels.push([tblName, exTable]);
       });
     }, this);
-    Object.defineProperty(this, "tables", {value: tsort(tableRels), writable: false});
+    tsort(tableRels);
+    Object.defineProperty(this, "tables", {value: tables, writable: false});
   };
 
   JSRel._dbInfos = {};

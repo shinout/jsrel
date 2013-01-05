@@ -4,7 +4,8 @@ var assert = require('assert');
 var schema = {
   user: {name : true},
   book: {title: true, price: 1},
-  user_book: {u: "user", b: "book"}
+  user_book: {u: "user", b: "book"},
+  foo : { bar: 1 }
 };
 
 var db = JSRel.use("tmp/sample", { schema: schema });
@@ -43,7 +44,12 @@ vows.describe('== TESTING STATIC VALUES ==').addBatch({
 
     "has tables" : function(db) {
       assert.isArray(db.tables);
-    }
+    },
+
+    "the number of tables" : function(db) {
+      assert.equal(db.tables.length, Object.keys(schema).length);
+    },
+
   },
 
   "jsrel.name": {
