@@ -1260,7 +1260,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     (columnNames.length > 3) || err('table', quo(tblName), 'must contain at least one column.');
 
     columnNames.forEach(function(colName) {
-      var parsed = this._parseColumn(colName, colInfos[colName]);
+      var parsed = this.__parseColumn(colName, colInfos[colName]);
       (this._colInfos[parsed.name] == null) || err(quo(parsed.name), "is already registered.")
       this._colInfos[parsed.name] = parsed;
     }, this);
@@ -1496,7 +1496,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
   /**
    * parse definition of columns
    **/
-  Table.prototype._parseColumn = function(colName, columnOption) {
+  Table.prototype.__parseColumn = function(colName, columnOption) {
     var colObj = { name: colName, type: Table._STR, sqltype: Table._STR, required: false, _default: null, rel : false }; // default object
 
     switch (columnOption) { // @see README.md #column description
