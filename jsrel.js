@@ -1714,7 +1714,8 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     return arrayize(query).map(function(condsList) {
       return Object.keys(condsList).reduce(function(ret, column) {
         ret[column] = arrayize(condsList[column]).map(function(cond) {
-          return (typeof cond == "object") ? cond : { equal: cond };
+          return (cond ===  null) ? { equal: null }
+            : (typeof cond == "object") ? cond : { equal: cond };
         });
         return ret;
       }, {});

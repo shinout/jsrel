@@ -30,6 +30,7 @@ var db = JSRel.use(__dirname + "/tmp/crud", {
     },
     tag : {
       word: true,
+      allow_null_column: false,
       type: 1,
       is_activated: "on",
       $uniques: "word",
@@ -142,6 +143,10 @@ vows.describe('== TESTING CRUD ==').addBatch({
     "get %BP%" : function(tagTbl) {
       var BPs = tagTbl.find({word: {like: "BP"}});
       assert.lengthOf(BPs, 15);
+    },
+    "isNull": function(tagTbl) {
+      var nullCols = tagTbl.find({allow_null_column: null});
+      assert.lengthOf(nullCols, 1032);
     }
   },
 
