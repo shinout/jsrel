@@ -147,6 +147,12 @@ vows.describe('== TESTING CRUD ==').addBatch({
     "isNull": function(tagTbl) {
       var nullCols = tagTbl.find({allow_null_column: null});
       assert.lengthOf(nullCols, 1032);
+    },
+
+    "groupBy": function(tagTbl) {
+      var groupBy = tagTbl.find(null, {select: ["id", "word"], groupBy: true });
+      console.log(groupBy);
+      assert.lengthOf(Object.keys(groupBy), 1032);
     }
   },
 

@@ -732,7 +732,16 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     keys = Table._offsetLimit(keys, options.offset, options.limit);
 
     // select 
-    return this._select(keys, options.select, joins, joinCols);
+    var res = this._select(keys, options.select, joins, joinCols);
+    if (!options.groupBy) return res;
+
+    // group by (unstable)
+    var ret = {};
+    var keyColumn = options.groupBy === true ? "id" : options.key;
+    res.forEach(function(item) {
+      ret[item[keyColumn]] = item
+    });
+    return ret;
   };
 
 
