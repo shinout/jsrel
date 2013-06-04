@@ -144,6 +144,14 @@ vows.describe('== TESTING CRUD ==').addBatch({
       var BPs = tagTbl.find({word: {like: "BP"}});
       assert.lengthOf(BPs, 15);
     },
+
+    "select" : function(tagTbl) {
+      var AURKAs = tagTbl.find({word: {like$: "AURKA"}}, {select: "word"});
+      assert.lengthOf(AURKAs, 2);
+      assert.equal(AURKAs[0], "AURKA");
+      assert.equal(AURKAs[1], "AURKAIP1");
+    },
+
     "isNull": function(tagTbl) {
       var nullCols = tagTbl.find({allow_null_column: null});
       assert.lengthOf(nullCols, 1032);
@@ -151,7 +159,6 @@ vows.describe('== TESTING CRUD ==').addBatch({
 
     "groupBy": function(tagTbl) {
       var groupBy = tagTbl.find(null, {select: ["id", "word"], groupBy: true });
-      console.log(groupBy);
       assert.lengthOf(Object.keys(groupBy), 1032);
     }
   },
