@@ -148,6 +148,16 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
     delete this._dbInfos[uniqId];
   };
 
+  /**
+   * remove the db
+   **/
+  JSRel.remove = function(uniqId) {
+    var jsrel = this._dbInfos[uniqId];
+    if (!jsrel || !jsrel.db) return;
+    this.free(uniqId);
+    jsrel.db.storage.removeItem(uniqId);
+  };
+
 /**********
  * JSRel private methods
  *********/

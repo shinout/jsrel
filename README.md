@@ -200,6 +200,8 @@ JSRel API documentation
 - JSRel.uniqIds
 - JSRel.isNode
 - JSRel.isBrowser
+- JSRel.free
+- JSRel.remove
 
 
 **instance of JSRel (jsrel)**
@@ -412,16 +414,21 @@ Returns instance of JSRel.
 As "import" is a reserved word in JavaScript, used "$import" instead.
 
 
-### JSRel.free(uniqId) ###
-Free the region of database **uniqId**.
-
-
 ### JSRel.isNode ###
 (ReadOnly boolean) if Node.js, true.
 
 
 ### JSRel.isBrowser ###
 (ReadOnly boolean) if the executing environment has "localStorage" and "sessionStorage" in global scope, true.
+
+
+### JSRel.free(uniqId) ###
+Free the region of database **uniqId**.
+This does not remove data from the storage.
+
+
+### JSRel.remove(uniqId) ###
+Remove data from the storage and from memory.
 
 
 instanceof JSRel (shown as jsrel)
