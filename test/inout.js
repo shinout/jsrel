@@ -237,6 +237,16 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
 
       var railsSQL = db.toSQL({rails: true});
       assert.equal(sql, railsSQL)
+    },
+
+    "db_custom_name" : function(db) {
+      var sql = db.toSQL({ db: "DB_NAME" });
+      assert.equal(sql.indexOf('CREATE DATABASE `DB_NAME`;'), 0);
+    },
+
+    "db_prepared_name" : function(db) {
+      var sql = db.toSQL({ db: true });
+      assert.equal(sql.indexOf('CREATE DATABASE `'+ db.id + '`;'), 0);
     }
   }
 }).export(module);

@@ -120,7 +120,7 @@ model.getUserBooks = function(name) {
 
 Also, synchoronous codes have an advantage of error handling.
 
-###I hate Blocking APIs!###
+###for those who dislike Blocking APIs###
 
 Why not making it standalone using WebWorker (browsers) or child_process.fork() (Node.js)?
 Then the whole calculation process doesn't affect the main event loop and we can get the result asynchronously.
@@ -464,6 +464,13 @@ Gets SQL string from the current schema and data.
 <tr><th>noschema</th>
 <td>boolean</td>
 <td>if true, schema SQLs (create statements) are not generated.</td>
+<td>null</td>
+<td>true</td>
+</tr>
+
+<tr><th>db</th>
+<td>boolean or string</td>
+<td>if true, create database whose name is id of the db, if string given, the value is set as database's name.
 <td>null</td>
 <td>true</td>
 </tr>
