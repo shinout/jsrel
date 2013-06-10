@@ -1580,7 +1580,7 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
       case "bool" :
       case "off" :
-        colObj.type = Table._BOOL;
+        colObj.type = colObj.sqltype = Table._BOOL;
         colObj._default = false;
         break;
 
