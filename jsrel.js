@@ -224,7 +224,11 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
     var ret = [];
 
-    if (options.db) ret.push('CREATE DATABASE `' + (options.db === true ? this.id : options.db.toString()) + '`;');
+    if (options.db) {
+      var dbname = options.db === true ? this.id : options.db.toString();
+      ret.push('CREATE DATABASE `' + dbname + '`;');
+      ret.push('USE `' + dbname + '`;');
+    }
 
     if (!options.noschema && !options.nodrop) ret.push(this.tables.map(function(tbl) {
       return this.table(tbl)._toDropSQL(options);
