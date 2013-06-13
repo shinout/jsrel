@@ -1,3 +1,13 @@
+/*package.json
+{
+  "volo": {
+    "dependencies": {
+      "sortedlist": "github:shinout/SortedList",
+      "jsrel": "github:shinout/jsrel"
+    }
+  }
+}
+*/
 (function(root,factory) {
   if (typeof define === 'function' && define.amd) define(['sortedlist'], factory);
   else if (typeof module == 'object' && module.exports) module.exports = factory();
