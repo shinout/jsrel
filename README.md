@@ -158,6 +158,12 @@ installation
     $ npm install jsrel
 ```
 
+or
+
+```bash
+    $ curl https://raw.github.com/shinout/jsrel/master/install-jsrel.sh | sh
+```
+
 When using in modern browsers, 
 
 ```html
