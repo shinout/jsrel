@@ -3,7 +3,7 @@
   "name": "jsrel",
   "description": "JavaScript lightweight synchronous RDB",
   "keywords": ["database", "DB", "RDB", "relation"],
-  "version": "0.1.15",
+  "version": "0.2.0",
   "repository": {
     "url": "git://github.com/shinout/jsrel"
   },
@@ -15,7 +15,7 @@
     "node": ">=0.6.1"
   },
   "dependencies": {
-    "sortedlist": ">=0.2.8"
+    "sortedlist": ">=0.3.1"
   },
   "devDependencies": {
     "vows" : ">=0.6.2",

@@ -1,11 +1,15 @@
-var JSRel = (function(isNode, isBrowser, SortedList) {
+(function(root,factory) {
+  if (typeof define === 'function' && define.amd) define(['sortedlist'], factory);
+  else if (typeof module == 'object' && module.exports) module.exports = factory();
+  else root.JSRel = factory(root.SortedList);
+}(this, function (SortedList) {
+  if (!SortedList) SortedList = require("sortedlist");
+  var isNode = (typeof module == "object" && typeof exports == "object" && module.exports === exports);
+  var isBrowser = (typeof localStorage == 'object' && typeof sessionStorage == 'object');
 
 /**********
  * initialization
  *********/
-
-  // load modules (Node.js)
-  if (isNode) SortedList = require('sortedlist');
 
   // storages
   var storages = { mock : { getItem: noop, setItem: noop, removeItem: noop } };
@@ -2022,10 +2026,4 @@ var JSRel = (function(isNode, isBrowser, SortedList) {
 
   return JSRel;
 
-})(
-  typeof exports == "object" && exports === this, // isNode
-  typeof localStorage == 'object' && typeof sessionStorage == 'object', // isBrowser
-  typeof SortedList == "function" ? SortedList : null
-);
-
-if (JSRel.isNode) module.exports = JSRel; // for Node.js
+}));
