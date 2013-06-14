@@ -5,7 +5,7 @@ description
 ------------
 JavaScript synchronous RDB (Relational database) without SQL
 
-Available in modern browsers and Node.js.
+Available in modern browsers, Node.js and Titanium(NEW!).
 
 API at a glance
 ----------------
@@ -158,20 +158,20 @@ installation
     $ npm install jsrel
 ```
 
-or
+for development in Titanium or web browsers,
 
 ```bash
     $ curl https://raw.github.com/shinout/jsrel/master/install-jsrel.sh | sh
 ```
 
-When using in modern browsers, 
+in browsers, 
 
 ```html
 <script type="text/javascript" src="/path/to/SortedList.js"></script>
 <script type="text/javascript" src="/path/to/jsrel.js"></script>
 ```
 
-In Node.js,
+in Node.js or Titanium,
 
 ```js
 var JSRel = require('jsrel');
@@ -193,7 +193,13 @@ dependencies
 -------------
 JSRel internally uses **[SortedList](https://github.com/shinout/SortedList)**
 When installed with npm, it is automatically packed to node_modules/sortedlist
-Otherwise, you must install it via github.
+Otherwise, it is recommended to run the following command to prepare jsrel and sortedlist.
+
+```bash
+    $ curl https://raw.github.com/shinout/jsrel/master/install-jsrel.sh | sh
+```
+
+In Titanium, you have to set jsrel.js and SortedList.js at the top of Resources directory.
 
 
 JSRel API documentation
@@ -206,6 +212,7 @@ JSRel API documentation
 - JSRel.uniqIds
 - JSRel.isNode
 - JSRel.isBrowser
+- JSRel.isTitanium
 - JSRel.free
 - JSRel.remove
 
@@ -259,7 +266,7 @@ Gets previously created instance if already exists.
 <td>string</td>
 <td>no</td>
 <td>type of external storages. oneof "mock", file" "local" "session"<br>
-When running in Node.js, "file" is set by default.<br>
+When running in Node.js or in Titanium, "file" is set by default.<br>
 uniqId is the path name to save the data to.
 When running in browsers, "local" is set by default.<br>
 local means "localStorage", session means "sessionStorage".
@@ -426,6 +433,10 @@ As "import" is a reserved word in JavaScript, used "$import" instead.
 
 ### JSRel.isBrowser ###
 (ReadOnly boolean) if the executing environment has "localStorage" and "sessionStorage" in global scope, true.
+
+
+### JSRel.isTitanium ###
+(ReadOnly boolean) if Titanium, true.
 
 
 ### JSRel.free(uniqId) ###
@@ -1106,6 +1117,8 @@ In master.js, we can use "getSongsByArtist" asynchronously, catching possible er
 In Node.js, **standalone** spawns a child process.
 
 In browsers, **standalone** creates a WebWorker instance.
+
+In Titanium, standalone is not supported.
 
 ### environmental specific code ###
 

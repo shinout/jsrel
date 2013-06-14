@@ -14,7 +14,8 @@
   else root.JSRel = factory(root.SortedList);
 }(this, function (SortedList) {
   if (!SortedList) SortedList = require("sortedlist");
-  var isNode = (typeof module == "object" && typeof exports == "object" && module.exports === exports);
+  var isTitanium = (typeof Ti == "object" && typeof Titanium == "object" && Ti === Titanium);
+  var isNode = !isTitanium && (typeof module == "object" && typeof exports == "object" && module.exports === exports);
   var isBrowser = (typeof localStorage == 'object' && typeof sessionStorage == 'object');
 
 /**********
@@ -27,7 +28,18 @@
     storages.local   = window.localStorage;
     storages.session = window.sessionStorage;
   }
-  if (isNode) {
+  if (isTitanium) {
+    var fs = Ti.Filesystem;
+    storages.file = {
+      getItem : function (k) {
+        var blob = fs.getFile(k.toString()).read();
+        return blob ? blob.text : null;
+      },
+      setItem : function (k, v) { return fs.getFile(k.toString()).write(v.toString()) },
+      removeItem : function (k) { return fs.getFile(k.toString()).deleteFile() }
+    };
+  }
+  else if (isNode) {
     var fs = require('fs');
     storages.file = {
       getItem : function (k) {
@@ -97,9 +109,10 @@
       get: function() { return Object.keys(this._dbInfos) },
       set: noop
     },
-    isNode :    { value: isNode, writable : false },
-    isBrowser : { value: isBrowser, writable : false },
-    storages :  { value: storages, writable : false },
+    isNode    : { value: isNode,     writable : false },
+    isTitanium: { value: isTitanium, writable : false },
+    isBrowser : { value: isBrowser,  writable : false },
+    storages  : { value: storages,   writable : false }
   });
 
   /**
@@ -113,7 +126,7 @@
 
     (options) || err('options is required.');
 
-    if (!options.storage) options.storage = (isNode) ? "file" : (isBrowser) ? "local" : "mock";
+    if (!options.storage) options.storage = (isNode || isTitanium) ? "file" : (isBrowser) ? "local" : "mock";
     var storage = this.storages[options.storage];
     (storage) || err('options.storage must be one of ["' + Object.keys(this.storages).join('", "') + '"]');
 
