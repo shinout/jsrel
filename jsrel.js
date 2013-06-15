@@ -80,6 +80,7 @@
   *  - _storage  : storage name
   *  - _autosave : boolean
   *  - _tblInfos : { tableName => Table object }
+  *  - _hooks    : { eventName => [function, function...] }
   **/
   var JSRel = function JSRel(uniqId, name, storage, autosave, format, tblData) {
     Object.defineProperty(this, 'id', { value : uniqId, writable: false });
@@ -92,6 +93,7 @@
     Object.defineProperty(this, "tables", {value: tables, writable: false});
 
     this._tblInfos = {};
+    this._hooks    = {};
     var methodName = "_parse" + format;
     (typeof Table.prototype[methodName] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
 
@@ -222,7 +224,10 @@
    * jsrel.save(compress)
    **/
   JSRel.prototype.save = function(noCompress) {
-    this.storage.setItem(this.id, this.$export(noCompress));
+    (this._hooks['save:start']) && this._emit('save:start', this.origin());
+    var data = this.$export(noCompress);
+    this.storage.setItem(this.id, data);
+    this._emit('save:end', data);
     return this;
   };
 
@@ -292,6 +297,38 @@
   JSRel.prototype.close = function() {
     // unimplemented
   };
+
+  /**
+   * jsrel.on()
+   **/
+  JSRel.prototype.on = function(evtname, fn, options) {
+    options || (options = {});
+    if (!this._hooks[evtname]) this._hooks[evtname] = [];
+    this._hooks[evtname][options.unshift? "unshift": "push"](fn);
+  };
+
+  /**
+   * jsrel.off()
+   **/
+  JSRel.prototype.off = function(evtname, fn) {
+    if (!this._hooks[evtname]) return;
+    if (fn == null) return this._hooks[evtname] = null;
+    this._hooks[evtname] = this._hooks[evtname].filter(function(f) { return (fn !== f) });
+  };
+
+/**********
+ * JSRel instance private methods
+ *********/
+  /**
+   * emitting event (all functions are synchronously called.)
+   * jsrel._emit()
+   **/
+  JSRel.prototype._emit = function() {
+    var args = Array.prototype.slice.call(arguments);
+    var evtname = args.shift(); // first argument
+    if (Array.isArray(this._hooks[evtname])) this._hooks[evtname].forEach(function(fn) { fn.apply(this, args) })
+  };
+
 
 /**********
  * JSRel.Table instance variables
@@ -434,10 +471,11 @@
       cls[values][insObj.id] = 1;
     }, this);
 
+    this.db._emit("ins", this.name, insObj);
+    this.db._emit("ins:"+this.name, insObj);
     this._insertRelations(obj, insObj);
 
-    if (!options.sub && this.db._autosave) this.db.save(); // autosave
-    // else if (this.db._tx) this.db._tx.push([JSRel._DEL, this.name, insObj.id]);
+    if (this.db._autosave) this.db.save(); // autosave
 
     return copy(insObj);
   };
@@ -480,10 +518,6 @@
     }, this);
 
   };
-
-
-
-
 
 
   /**
@@ -607,14 +641,12 @@
       cls[newval][updObj.id] = 1;
     }, this);
 
+    this.db._emit("upd", this.name, updObj, old, updKeys);
+    this.db._emit("upd:"+this.name, updObj, old, updKeys);
     // updating 1:N objects
     this._updateRelations(obj, updObj, options.append);
 
-    if (!options.sub && this.db._autosave) this.db.save(); // autosave
-    // else if (this.db._tx) this.db._tx.push([JSRel._UPD, this.name, updKeys.reduce(function(ret, col) {
-    //   ret[col] = old[col];
-    //   return ret;
-    // }, {})]);
+    if (this.db._autosave) this.db.save(); // autosave
     return updObj;
   };
 
@@ -864,10 +896,8 @@
       // delete object
       delete this._data[obj.id];
 
-      // if (options.sub) {
-      //   var txlist = [[JSRel._INS, this.name, copy(obj)]];
-      // }
-      // var subs = [];
+      this.db._emit("del", this.name, obj);
+      this.db._emit("del:"+this.name, obj);
 
       // delete referring columns
       Object.keys(this._referreds).forEach(function(exTable) {
@@ -891,10 +921,7 @@
       }, this);
     }, this);
 
-    if (!options.sub && this.db._autosave) this.db.save(); // autosave
-    // else if (options.sub && this.db._tx) options.sub.push([JSRel._INS, this.name, obj, subs]);
-    // else if (this.db._tx) this.db._tx.push(txlist);
-
+    if (this.db._autosave) this.db.save(); // autosave
     return this;
   };
 

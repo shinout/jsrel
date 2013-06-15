@@ -222,6 +222,8 @@ JSRel API documentation
 - jsrel.table(tableName)
 - jsrel.save()
 - jsrel.$export()
+- jsrel.on()
+- jsrel.off()
 - jsrel.toSQL(options)
 - jsrel.origin()
 - jsrel.id
@@ -466,6 +468,123 @@ Exports current data as the format above.
 Returns data.
 
 As "export" is a reserved word in JavaScript, used "$export" instead.
+
+
+### jsrel.on(eventName, func, options) ###
+
+Registers hook functions.
+**eventName** is the name of the event to bind the function **func**.
+
+#### events ####
+<table>
+<tr><th>event name</th>
+<td>emitted when</td>
+<td>arguments to be passed</td>
+</tr>
+<tr><th>ins</th>
+<td>data are inserted</td>
+<td>
+<ul>
+<li>**tableName** : table name
+<li>**insObj** : inserted object (with id)
+</ul>
+</td>
+</tr>
+
+<tr><th>ins:{tablename}</th>
+<td>data are inserted into {tablename}</td>
+<td>
+<ul>
+<li>**insObj** : inserted object (with id)
+</ul>
+</td>
+</tr>
+
+<tr><th>upd</th>
+<td>data are updated</td>
+<td>
+<ul>
+<li>**tableName** : table name
+<li>**updObj** : updated object
+<li>**oldObj** : object before updating
+<li>**updColumns** :updated columns (Array)
+</ul>
+</td>
+</tr>
+
+<tr><th>upd:{tablename}</th>
+<td>data are updated in {tablename}</td>
+<td>
+<ul>
+<li>**updObj** : updated object
+<li>**oldObj** : object before updating
+<li>**updColumns** :updated columns (Array)
+</ul>
+</td>
+</tr>
+
+<tr><th>del</th>
+<td>data are deleted</td>
+<td>
+<ul>
+<li>**tableName** : table name
+<li>**delObj** : deleted object
+</ul>
+</td>
+</tr>
+
+<tr><th>del:{tablename}</th>
+<td>data are deleted in {tablename}</td>
+<td>
+<ul>
+<li>**delObj** : deleted object
+</ul>
+</td>
+</tr>
+
+<tr><th>save:start</th>
+<td>at the start of jsrel.save()</td>
+<td>
+<ul>
+<li>**origin** : result of db.origin()
+</ul>
+</td>
+</tr>
+
+<tr><th>save:end</th>
+<td>at the end of jsrel.save()</td>
+<td>
+<ul>
+<li>**data** : saved data
+</ul>
+</td>
+</tr>
+
+</table>
+
+
+#### options ####
+<table>
+<tr><th>option name</th>
+<td>type</td>
+<td>description</td>
+<td>default</td>
+</tr>
+<tr><th>unshift</th>
+<td>boolean</td>
+<td>registers a function to the top of the list</td>
+<td>false</td>
+</tr>
+</table>
+
+
+
+### jsrel.off(eventName, func) ###
+Unregister hook functions registered in **eventName**.
+If a function **func** is registered in **eventName** hooks, it is removed.
+If **func** is null, all functions registered in **eventName** is removed.
+
+
 
 ### jsrel.toSQL(options) ###
 Gets SQL string from the current schema and data.
