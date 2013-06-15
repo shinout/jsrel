@@ -7,6 +7,8 @@ JavaScript synchronous RDB (Relational database) without SQL
 
 Available in modern browsers, Node.js and Titanium(NEW!).
 
+This **ISN'T** ORM, but SQL-less RDB implemented in JavaScript!
+
 API at a glance
 ----------------
 First, define the schema
@@ -222,8 +224,8 @@ JSRel API documentation
 - jsrel.table(tableName)
 - jsrel.save()
 - jsrel.$export()
-- jsrel.on()
-- jsrel.off()
+- jsrel.on(eventName, func, options)
+- jsrel.off(eventName, func)
 - jsrel.toSQL(options)
 - jsrel.origin()
 - jsrel.id
