@@ -7,7 +7,7 @@ var Table = JSRel.Table;
 var artists = require(__dirname + '/data/artists');
 
 var db = JSRel.use(__dirname + "/tmp/inout", {
-  storage: 'file',
+  storage: 'mock',
   schema: {
     user : {
       name: true,
@@ -84,6 +84,35 @@ Object.keys(artists).forEach(function(name) {
 var st = JSON.stringify;
 
 vows.describe('== TESTING IN/OUT ==').addBatch({
+  "save": {
+    topic: db,
+
+    "origin is null for the first time" : function(songTbl) {
+      assert.isNull(db.origin());
+    },
+
+    "origin is equal to compressed dump" : function(songTbl) {
+      db.save();
+      var origin = db.origin();
+      assert.isNotNull(origin);
+      assert.equal(typeof origin, "string");
+      assert.equal(origin, db.$export());
+    },
+
+    "origin is not changed by crud" : function(songTbl) {
+      var lastId = db.count("song");
+      var origin1 = db.origin();
+      assert.isNotNull(db.one("song", {id:lastId}));
+      db.del("song", {id: lastId});
+      assert.isNull(db.one("song", {id:lastId}));
+      var origin2 = db.origin();
+      assert.equal(origin1, origin2);
+      db.save();
+      var origin3 = db.origin();
+      assert.notEqual(origin2, origin3);
+    }
+  },
+
   "compression": {
     topic: db.table("song"),
 

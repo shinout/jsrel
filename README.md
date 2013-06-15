@@ -223,6 +223,7 @@ JSRel API documentation
 - jsrel.save()
 - jsrel.$export()
 - jsrel.toSQL(options)
+- jsrel.origin()
 - jsrel.id
 - jsrel.name
 - jsrel.tables
@@ -528,6 +529,19 @@ Gets SQL string from the current schema and data.
 </tr>
 
 </table>
+
+
+### jsrel.origin() ###
+Gets the last savedata.
+
+Unless jsrel.save() has been called at least once, null is returned.
+
+```js
+  var savedata = jsrel.origin();
+  var newdb = jsrel.$import("new_db", savedata);
+```
+
+
 
 ### jsrel.id ###
 (ReadOnly) gets id

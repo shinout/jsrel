@@ -23,7 +23,14 @@
  *********/
 
   // storages
-  var storages = { mock : { getItem: noop, setItem: noop, removeItem: noop } };
+  var storages = { mock : (function() {
+    var mockData = {};
+    return {
+      getItem: function(id) { return mockData[id] || null },
+      setItem: function(id, data) { mockData[id] = data },
+      removeItem: function(id) { delete mockData[id] }
+    }
+  })()};
   if (isBrowser) {
     storages.local   = window.localStorage;
     storages.session = window.sessionStorage;
@@ -217,6 +224,13 @@
   JSRel.prototype.save = function(noCompress) {
     this.storage.setItem(this.id, this.$export(noCompress));
     return this;
+  };
+
+  /**
+   * jsrel.origin(): get saved data
+   **/
+  JSRel.prototype.origin = function() {
+    return this.storage.getItem(this.id);
   };
 
   /**
