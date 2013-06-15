@@ -9,11 +9,26 @@ Available in modern browsers, Node.js and Titanium(NEW!).
 
 This **ISN'T** ORM, but SQL-less RDB implemented in JavaScript!
 
+
+Get it!
+----------
+```bash
+    $ npm install jsrel
+```
+
+or
+
+```bash
+    $ curl https://raw.github.com/shinout/jsrel/master/install-jsrel.sh | sh
+```
+
+
 API at a glance
 ----------------
 First, define the schema
 
 ```js
+var JSRel = require("jsrel");
 var db = JSRel.use("dbname", {schema: 
   { user: { name : true, is_activated: "on", $uniques: "name"},
     book: { title: true, price: 1, author: "user", $indexes: "title" },
