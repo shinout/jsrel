@@ -538,7 +538,7 @@ Unless jsrel.save() has been called at least once, null is returned.
 
 ```js
   var savedata = jsrel.origin();
-  var newdb = jsrel.$import("new_db", savedata);
+  var newdb = JSRel.$import("new_db", savedata);
 ```
 
 
