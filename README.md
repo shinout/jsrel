@@ -243,6 +243,7 @@ JSRel API documentation
 - jsrel.off(eventName, func)
 - jsrel.toSQL(options)
 - jsrel.origin()
+- jsrel.drop()
 - jsrel.id
 - jsrel.name
 - jsrel.tables
@@ -678,6 +679,12 @@ Unless jsrel.save() has been called at least once, null is returned.
 ```
 
 
+### jsrel.drop(tableName1, tableName2, ...) ###
+Drops given tables.
+If dependencies exist, jsrel follows the following rules.
+
+1. throw an error if the given table group contains another reference table
+2. set all the ids of referred columns to null
 
 ### jsrel.id ###
 (ReadOnly) gets id
