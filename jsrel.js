@@ -74,7 +74,7 @@
   * public
   *  - id
   *  - name
-  *  - tables : list of tables
+  *  - tables : list of tables (everytime dynamically created)
   *
   * private
   *  - _storage  : storage name
@@ -90,7 +90,6 @@
     this.constructor._dbInfos[uniqId] = {db: this, storage: storage};
 
     var tables = Object.keys(tblData);
-    Object.defineProperty(this, "tables", {value: tables, writable: false});
 
     this._tblInfos = {};
     this._hooks    = {};
@@ -214,6 +213,14 @@
   });
 
   /**
+   * jsrel.tables
+   **/
+  Object.defineProperty(JSRel.prototype, 'tables', {
+    get: function() { return Object.keys(this._tblInfos) },
+    set: noop
+  });
+
+  /**
    * jsrel.table(tableName)
    **/
   JSRel.prototype.table = function(tableName) {
@@ -315,6 +322,65 @@
     if (fn == null) return this._hooks[evtname] = null;
     this._hooks[evtname] = this._hooks[evtname].filter(function(f) { return (fn !== f) });
   };
+
+  /**
+   * jsrel.drop(tableName1, tableName2, ...)
+   **/
+  JSRel.prototype.drop = function() {
+    var tblNames = Array.prototype.slice.call(arguments);
+    var nonRequiredReferringTables = {}; // key: table name of referring table, value: column name
+
+    // check dependencies
+    tblNames.forEach(function(tblName) {
+      var table = this._tblInfos[tblName];
+      (table) || err("unknown table name", quo(tblName), "in jsrel#drop");
+
+      // try deleting tables referring the table if required
+      Object.keys(table._referreds).forEach(function(refTblName) {
+        Object.keys(table._referreds[refTblName]).forEach(function(col) {
+          if (table._referreds[refTblName][col]) {  // required column
+            (tblNames.indexOf(refTblName) >=0) || err("table ", quo(tblName), "has its required-referring table", quo(refTblName), ", try jsrel#drop('"+tblName+"', '"+refTblName+"')");
+          }
+          else {
+            nonRequiredReferringTables[refTblName] = col;
+          }
+        });
+      });
+    }, this);
+
+    // deletion
+    tblNames.forEach(function(tblName) {
+      var table = this._tblInfos[tblName];
+      // delete relation
+      Object.keys(table._rels).forEach(function(relname) {
+        var relTblName = table._rels[relname]
+        if (tblNames.indexOf(relTblName) >= 0) return;
+        var relTable = this._tblInfos[relTblName];
+        delete relTable._referreds[tblName];
+      }, this);
+
+      // delete props
+      ["_colInfos", "_indexes", "_idxKeys", "_classes", "_data", "_rels", "_referreds"].forEach(function(prop) {
+        delete table[prop];
+      }, this);
+      // delete from db
+      delete this._tblInfos[tblName];
+    }, this);
+
+
+
+    // set null to referring columns
+    Object.keys(nonRequiredReferringTables).forEach(function(refTblName) {
+      var col = nonRequiredReferringTables[refTblName];
+      var refTable = this._tblInfos[refTblName];
+      Object.keys(refTable._data).forEach(function(id) {
+        refTable._data[id][col + "_id"] = null;
+      });
+    }, this);
+    return this;
+  };
+
+
 
 /**********
  * JSRel instance private methods

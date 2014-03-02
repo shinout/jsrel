@@ -284,7 +284,85 @@ vows.describe('== TESTING SCHEMA ==').addBatch({
     "'name' has two indexes" : function(jsrel) {
       assert.lengthOf(Object.keys(jsrel.table('user')._idxKeys.name), 2);
     }
+
+  },
+  "deletion of table": {
+    topic: function() {
+      var schema = {
+        user : {
+          name: true,
+          mail: true,
+          age : 0,
+          is_activated: "on",
+          $indexes: "name",
+          $uniques: [["name", "mail"]],
+          $classes: "is_activated"
+        },
+        book : {
+          title: true,
+          ISBN : true,
+          code : 1,
+          $indexes: "title",
+          $uniques: ["ISBN", "code"]
+        },
+        user_book: {
+          u : "user",
+          b : "book"
+        },
+
+        user_info: {
+          info: true,
+          uuuu: {type: "user", required: false}
+        }
+      };
+      return schema;
+    },
+
+    "dropping table which is referred from other tables(should fail)" : function(schema) {
+      var db = JSRel.use("tst1", { schema: schema });
+      try {
+        db.drop("book");
+        assert.fail();
+      }
+      catch (e) {
+        assert.match(e.message, /"user_book"/);
+      }
+    },
+
+    "dropping table with referring table (should succeed)" : function(schema) {
+      var db = JSRel.use("tst2", { schema: schema });
+      var initialLnegth = db.tables.length; 
+      db.drop("book", "user_book");
+      assert.lengthOf(db.tables, initialLnegth - 2);
+      assert.include(db.tables, "user");
+      assert.include(db.tables, "user_info");
+    },
+
+    "dropping table which is referred from other tables but not required (should succeed)" : function(schema) {
+      var db = JSRel.use("tst3", { schema: schema });
+      var shinout = db.ins("user", {name: "shinout", mail: "shinout@shinout.net"});
+      var info1 = db.ins("user_info", {info: "medical doctor", uuuu: shinout });
+      var info2 = db.ins("user_info", {info: "wanna be a scientist", uuuu: shinout });
+      var info3 = db.ins("user_info", {info: "plays Alto sax", uuuu: shinout });
+      var info4 = db.ins("user_info", {info: "plays the keyboard with transposing", uuuu: shinout });
+      var info5 = db.ins("user_info", {info: "begins playing the electric bass", uuuu: shinout });
+
+      assert.isNotNull(db.one("user_info", info1.uuuu_id));
+      assert.isNotNull(db.one("user_info", info2.uuuu_id));
+      assert.isNotNull(db.one("user_info", info3.uuuu_id));
+      assert.isNotNull(db.one("user_info", info4.uuuu_id));
+      assert.isNotNull(db.one("user_info", info5.uuuu_id));
+
+      var initialLnegth = db.tables.length;
+      db.drop("user", "user_book");
+      assert.lengthOf(db.tables, initialLnegth - 2);
+      assert.include(db.tables, "book");
+      assert.include(db.tables, "user_info");
+      assert.isNull(db.one("user_info", info1.id).uuuu_id);
+      assert.isNull(db.one("user_info", info2.id).uuuu_id);
+      assert.isNull(db.one("user_info", info3.id).uuuu_id);
+      assert.isNull(db.one("user_info", info4.id).uuuu_id);
+      assert.isNull(db.one("user_info", info5.id).uuuu_id);
+    }
   }
-
-
 }).export(module);
