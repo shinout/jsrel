@@ -39,8 +39,8 @@
     var fs = Ti.Filesystem;
     storages.file = {
       getItem : function (k) {
-        var blob = fs.getFile(k.toString()).read();
-        return blob ? blob.text : null;
+        var file = fs.getFile(k.toString());
+        return file.exists() ? fs.getFile(k.toString()).read().text : null;
       },
       setItem : function (k, v) { return fs.getFile(k.toString()).write(v.toString()) },
       removeItem : function (k) { return fs.getFile(k.toString()).deleteFile() }
