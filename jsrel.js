@@ -50,7 +50,7 @@
     var fs = require('fs');
     storages.file = {
       getItem : function (k) {
-        try { return fs.readFileSync(k, 'utf8') } 
+        try { return fs.readFileSync(k, 'utf8') }
         catch (e) { return null }
       },
       setItem : function (k, v) { return fs.writeFileSync(k, v.toString(), 'utf8') },
@@ -62,14 +62,14 @@
  * JSRel static variables
  *********/
 
- /** 
+ /**
   * arguments
-  *  - uniqId   : 
-  *  - name     : 
-  *  - storage  : 
-  *  - autosave : 
+  *  - uniqId   :
+  *  - name     :
+  *  - storage  :
+  *  - autosave :
   *  - format   : format of tblData to parse
-  *  - tblData  : 
+  *  - tblData  :
   *
   * public
   *  - id
@@ -108,7 +108,7 @@
       var table = this._tblInfos[tblName];
       table[methodName](colData);
       table._activate();
-    }, this); 
+    }, this);
   };
 
   JSRel._dbInfos = {};
@@ -210,7 +210,7 @@
 
   Object.defineProperty(JSRel.prototype, 'storage', {
     get: function() { return JSRel.storages[this._storage] },
-    set: noop 
+    set: noop
   });
 
   /**
@@ -279,7 +279,7 @@
     if (!options.noschema && !options.nodrop) ret.push(this.tables.map(function(tbl) {
       return this.table(tbl)._toDropSQL(options);
     }, this).reverse().join("\n"));
-   
+
     if (!options.noschema) ret.push(this.tables.map(function(tbl) {
       return this.table(tbl)._toCreateSQL(options);
     }, this).join("\n"));
@@ -339,7 +339,7 @@
    *
    * arguments
    *   name    : (string) table name
-   *   db      : (JSRel) 
+   *   db      : (JSRel)
    *
    * public
    *  - columns   : list of columns
@@ -382,7 +382,7 @@
     _CHR2   : { value : 6, writable: false },
     TYPES   : { value : {1: "boolean", 2: "number", 3: "string", 4: "number", 5: "string", 6: "string"}, writable: false },
     ID_TEMP : { value : 0, writable: false },
-    INVALID_COLUMNS: { value: 
+    INVALID_COLUMNS: { value:
       [ 'id', 'ins_at', 'upd_at',
         'on', 'off', 'str', 'num', 'bool', 'int', 'float', 'text', 'chars', 'double', 'string', 'number', 'boolean',
         'order', 'limit', 'offset', 'join', "where", "as", "select", "explain"
@@ -463,7 +463,7 @@
       list.insert(insObj.id);
     }, this);
 
-    // save classes 
+    // save classes
     Object.keys(this._classes).forEach(function(columns) {
       var cls = this._classes[columns];
       var values = columns.split(',').map(function(col) { return insObj[col] }).join(',');
@@ -576,7 +576,7 @@
         (exObj) || err("invalid external id", quo(idcol), ":", exId);
       }
     }, this);
-    
+
     // remove old indexes
     var updIndexPoses = {};
     updKeys.forEach(function(column) {
@@ -624,7 +624,7 @@
       list.insert(obj.id);
     }, this);
 
-    // update classes 
+    // update classes
     Object.keys(this._classes).forEach(function(columns) {
       var cls = this._classes[columns];
       var cols = columns.split(',');
@@ -820,7 +820,7 @@
     // offset, limit
     keys = Table._offsetLimit(keys, options.offset, options.limit);
 
-    // select 
+    // select
     var res = this._select(keys, options.select, joins, joinCols);
     if (!options.groupBy) return res;
 
@@ -883,7 +883,7 @@
         (bool) || err("index was not deleted."); // for debugging
       }, this);
 
-      // delete classes 
+      // delete classes
       Object.keys(this._classes).forEach(function(columns) {
         var cls = this._classes[columns];
         var cols = columns.split(',');
@@ -926,7 +926,7 @@
   };
 
 /**********
- * JSRel.Table private functions 
+ * JSRel.Table private functions
  *********/
 
   /**
@@ -951,7 +951,7 @@
       noIndex: ids
     };
     var searchType;
-    if ((ids && ids.length < Table.NOINDEX_MIN_LIMIT) || 
+    if ((ids && ids.length < Table.NOINDEX_MIN_LIMIT) ||
         (!lists.index && !lists.classes) || condType == "like") {
       searchType = 'noIndex';
     }
@@ -1196,7 +1196,7 @@
     var stmt = [bq(name), colType];
     if (info.required) stmt.push("NOT NULL");
     if (info._default != null) {
-      var defa = (info.type == Table._BOOL) 
+      var defa = (info.type == Table._BOOL)
         ? info._default ? 1 : 0
         : (info.type == Table._STR) ? quo(info._default) : info._default;
       stmt.push("DEFAULT", defa);
@@ -1243,7 +1243,7 @@
       substmts.push(stmt);
     }, this)
 
-    return "CREATE TABLE " + bq(this.name) + "(" + substmts.join(",") + ")" 
+    return "CREATE TABLE " + bq(this.name) + "(" + substmts.join(",") + ")"
            + (options.type == "mysql" && options.engine ? ' ENGINE=' + options.engine : '') + ';';
   };
 
@@ -1465,7 +1465,7 @@
    *  col    : column name
    *  req    : required or not
    *  query  : query
-   *  options: options 
+   *  options: options
    *  name   : name
    **/
   Table.prototype._getJoinInfos = function(join) {
@@ -1686,7 +1686,7 @@
         }
 
         if (columnOption._default != null) {
-          (typeof columnOptions._default == Table.TYPES[colObj.type]) ||
+          (typeof columnOption._default == Table.TYPES[colObj.type]) ||
             err("type of the default value", columnOption._default, "does not match", Table.TYPES[colObj.type],
             "in", colObj.name);
           colObj._default = columnOption._default;
@@ -1701,7 +1701,7 @@
   // sort keys with order(s)
   Table.prototype._orderBy = function(keys, order, report) {
     if (!order) return keys;
-    var orders = objectize(order, "asc"); 
+    var orders = objectize(order, "asc");
     Object.keys(orders).reverse().forEach(function(k) {
       var orderType = orders[k];
       if (this._indexes[k] && keys.length * 4 > this._indexes.id.length) {
@@ -1877,7 +1877,7 @@
   Object.keys(Table.prototype).forEach(function(name) {
     if (name.charAt(0) == '_') return;
 
-    var method = Table.prototype[name]; 
+    var method = Table.prototype[name];
     if (typeof method != "function") return;
     JSRel.prototype[name] = function() {
       var tblName = Array.prototype.shift.call(arguments);
@@ -2022,7 +2022,7 @@
     if (!Array.isArray(vals)) return Queries.classes.equal.call(this, col, vals, cls);
     return cup(vals.map(function(v) { return Queries.classes.equal.call(this, col, v, cls) }, this));
   };
-  
+
 
 
 /**********
@@ -2052,7 +2052,7 @@
 
   function unique(arr) {
     var o = {};
-    return arr.filter(function(i) { return i in o? false: o[i] = true});                                      
+    return arr.filter(function(i) { return i in o? false: o[i] = true});
   }
 
   function cup(arr) {
