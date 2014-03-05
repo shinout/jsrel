@@ -247,6 +247,7 @@ JSRel API documentation
 - jsrel.id
 - jsrel.name
 - jsrel.tables
+- jsrel.schema
 
 
 **instance of JSRel Table (table)**
