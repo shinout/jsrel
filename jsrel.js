@@ -68,7 +68,7 @@
   *  - name     :
   *  - storage  :
   *  - autosave :
-  *  - format   : format of tblData to parse
+  *  - format   : format of tblData to parse (one of Raw, Schema, Compressed)
   *  - tblData  :
   *
   * public
@@ -93,20 +93,10 @@
 
     this._tblInfos = {};
     this._hooks    = {};
-    var methodName = "_parse" + format;
-    (typeof Table.prototype[methodName] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
 
     // create table instances
     tables.forEach(function(tblName) {
-      this._tblInfos[tblName] = new Table(tblName, this);
-    }, this);
-
-    // put column data to table instances
-    tables.forEach(function(tblName) {
-      var colData = tblData[tblName];
-      var table = this._tblInfos[tblName];
-      table[methodName](colData);
-      table._activate();
+      this._tblInfos[tblName] = new Table(tblName, this, tblData[tblName], format);
     }, this);
   };
 
@@ -444,12 +434,13 @@
    * arguments
    *   name    : (string) table name
    *   db      : (JSRel)
+   *   colData : table information
+   *   format  : format of tblData to parse (one of Raw, Schema, Compressed)
    *
    * public
    *  - columns   : list of columns
    *  - name      : table name
    *  - db        : id of the parent JSRel (externally set)
-   *  - activated : activated or not
    *
    * private
    *  - _colInfos  : { colName => column Info object }
@@ -460,7 +451,7 @@
    *  - _rels      : { RelName => related table name }
    *  - _referreds : { referring table name => { column => required or not} } (externally set)
    **/
-  var Table = function Table(name, db) {
+  var Table = function Table(name, db, colData, format) {
     Object.defineProperty(this, 'name', { value : name, writable: false });
     Object.defineProperty(this, 'db',   { value : db, writable: false });
     // Private values. They can be directly input and replaced.
@@ -472,7 +463,11 @@
     this._rels      = {};
     this._referreds = {};
 
-    this.activated  = false;
+    // put column data to table instances
+    (typeof Table.prototype["_parse" + format] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
+    this["_parse" + format](colData);
+
+    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
   };
 
   JSRel.Table = Table;
@@ -583,15 +578,6 @@
 
     return copy(insObj);
   };
-
-  /**
-   * freeze the structure, and activate
-   **/
-  Table.prototype._activate = function() {
-    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
-    Object.defineProperty(this, 'activated', { value : true, writable: false });
-  };
-
 
   Table.prototype._insertRelations = function(obj, insObj) {
     Object.keys(this._referreds).forEach(function(exTbl) {
