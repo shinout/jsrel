@@ -467,7 +467,14 @@
     (typeof Table.prototype["_parse" + format] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
     this["_parse" + format](colData);
 
-    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos).sort(), writable: false });
+    var columns = Object.keys(this._colInfos).sort();
+    Object.freeze(columns);
+    Object.defineProperty(this, 'columns', { value : columns, writable: false });
+
+    var colOrder = {};
+    columns.forEach(function(col, k) { colOrder[col] = k })
+    Object.freeze(colOrder);
+    Object.defineProperty(this, 'colOrder', { value : colOrder, writable: false });
   };
 
   JSRel.Table = Table;
