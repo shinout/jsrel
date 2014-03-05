@@ -319,16 +319,17 @@
       ret.push('CREATE DATABASE `' + dbname + '`;');
       ret.push('USE `' + dbname + '`;');
     }
+    var tables = this.tables;
 
-    if (!options.noschema && !options.nodrop) ret.push(this.tables.map(function(tbl) {
+    if (!options.noschema && !options.nodrop) ret.push(tables.map(function(tbl) {
       return this.table(tbl)._toDropSQL(options);
     }, this).reverse().join("\n"));
 
-    if (!options.noschema) ret.push(this.tables.map(function(tbl) {
+    if (!options.noschema) ret.push(tables.map(function(tbl) {
       return this.table(tbl)._toCreateSQL(options);
     }, this).join("\n"));
 
-    if (!options.nodata) ret.push( this.tables.map(function(tbl) {
+    if (!options.nodata) ret.push( tables.map(function(tbl) {
       return this.table(tbl)._toInsertSQL(options);
     }, this).join("\n"));
 
