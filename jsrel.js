@@ -467,7 +467,7 @@
     (typeof Table.prototype["_parse" + format] == "function") || err("unknown format", quo(format), "given in", quo(this.db.id));
     this["_parse" + format](colData);
 
-    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos), writable: false });
+    Object.defineProperty(this, 'columns', { value : Object.keys(this._colInfos).sort(), writable: false });
   };
 
   JSRel.Table = Table;

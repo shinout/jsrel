@@ -352,7 +352,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
     },
 
     "is invalid" : function(result) {
-      assert.match(result, /column "name" is required/);
+      assert.match(result, /column "[a-z0-9]+" is required/);
     }
   },
 
