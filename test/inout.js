@@ -235,6 +235,37 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       var comp   = db.$export();
       var nocomp = db.$export(true);
       assert.isTrue(comp.length * 2 < nocomp.length)
+    },
+
+    "get canonical schema" : function(v) {
+      var testSchema = {
+        "table1": {
+          defaultStr: {type: "str", required: false, _default: "original!"},
+          defaultOnBool: "on",
+          name: "str",
+          mail: "str",
+          activated: "bool",
+          uniqId: 1,
+          $uniques: ["uniqId", ["name", "mail", "activated"]] 
+        },
+
+        "table2" : {
+          col1 : {type: "boolean"},
+          col2 : {type: "string"},
+          col3 : {type: "number"},
+          col4 : {type: "number"},
+          col5 : {type: "string"},
+          col6 : {type: "number"},
+          col7 : {type: "number"},
+          $indexes: ["col4", ["col2", "col1", "col7"]],
+          $uniques: ["col1", ["col2", "col3", "col5"]],
+          $classes: ["col6", ["col3", "col4", "col7"]]
+        }
+      };
+      var db = JSRel.use("schemaTest", {schema: testSchema});
+      var createdSchema = db.schema;
+      var db2 = JSRel.use("Re-Created", {schema: createdSchema});
+      assert.deepEqual(createdSchema, db2.schema);
     }
   },
 

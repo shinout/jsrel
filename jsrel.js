@@ -152,7 +152,7 @@
       (options.schema && typeof options.schema == 'object') || err('options.schema is required');
       (Object.keys(options.schema).length) || err('schema must contain at least one table');
       format = "Schema";
-      tblData = options.schema;
+      tblData = deepCopy(options.schema, true);
     }
     var name = (options.name != null) ? options.name.toString() : uniqId;
 
@@ -217,6 +217,43 @@
    **/
   Object.defineProperty(JSRel.prototype, 'tables', {
     get: function() { return Object.keys(this._tblInfos) },
+    set: noop
+  });
+
+  /**
+   * jsrel.schema
+   * getting canonical schema
+   **/
+  Object.defineProperty(JSRel.prototype, 'schema', {
+    get: function() {
+      var tableDescriptions = {};
+      this.tables.forEach(function(tableName) {
+        var table = this._tblInfos[tableName];
+        var columnDescriptions = {};
+        table.columns.forEach(function(colName) {
+          if (colName == "id" || colName == "ins_at" || colName == "upd_at") return;
+          var colInfo = table._colInfos[colName];
+          columnDescriptions[colName] = {
+            type     : Table.TYPES[colInfo.type],
+            required : colInfo.required,
+            _default : colInfo._default
+          };
+        });
+        columnDescriptions.$indexes = [];
+        columnDescriptions.$uniques = [];
+        Object.keys(table._indexes).forEach(function(col) {
+          if (col == "id" || col == "ins_at" || col == "upd_at") return;
+          var unique = table._indexes[col]._unique;
+          columnDescriptions[unique ? "$uniques" : "$indexes"].push(col.split(","));
+        });
+        columnDescriptions.$classes = Object.keys(table._classes).map(function(col) { return col.split(",") });
+        ["$indexes", "$uniques", "$classes"].forEach(function(key) {
+          if (columnDescriptions[key].length == 0) delete columnDescriptions[key];
+        });
+        tableDescriptions[tableName] = columnDescriptions;
+      }, this);
+      return tableDescriptions;
+    },
     set: noop
   });
 
@@ -2113,6 +2150,17 @@
     for (var attr in obj) {
       if (obj.hasOwnProperty(attr)) ret[attr] = obj[attr];
     }
+    return ret;
+  }
+
+  /**
+   * deeply copy the given value
+   **/
+  function deepCopy(val) {
+    if (Array.isArray(val)) return val.map(deepCopy);
+    if (typeof val != "object" || val === null || val === undefined) return val;
+    var ret = {};
+    for (var attr in val) if (val.hasOwnProperty(attr)) ret[attr] = deepCopy(val[attr]);
     return ret;
   }
 

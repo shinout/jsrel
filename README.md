@@ -697,10 +697,24 @@ If dependencies exist, jsrel follows the following rules.
 ### jsrel.tables ###
 (ReadOnly) gets list of registered tables
 
+
 ```js
 [table1, table2, ...]
 ```
 
+
+### jsrel.schema ###
+(ReadOnly) gets a canonical schema of the database, the same format as schema passed to JSRel.use
+
+Be careful that this property is dynamically created for every access.
+
+```js
+var schema = db.schema; // created dynamically
+var schema2 = db.schema; // created dynamically
+schema  ===  schema2 // false, but deeply equal
+
+var db2 = JSRel.use("db2", {schema: schema});  // the same structure as db
+```
 
 instanceof JSRel.Table (shown as table)
 ------
