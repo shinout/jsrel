@@ -8,80 +8,6 @@
   return
 ) this, (SortedList) ->
 
-  # no operation
-  noop = ->
-
-  # throws error
-  err = (args...)->
-    args.push "(undocumented error)" if args.length is 0
-    args.unshift "[JSRel]"
-    throw new Error(args.join(" "))
-  
-  ###
-  shallowly copies the given object
-  ###
-  copy = (obj) ->
-    ret = {}
-    for attr of obj
-      ret[attr] = obj[attr]  if obj.hasOwnProperty(attr)
-    ret
-  
-  ###
-  deeply copies the given value
-  ###
-  deepCopy = (val) ->
-    return val.map(deepCopy)  if Array.isArray(val)
-    return val if typeof val isnt "object" or val is null or val is `undefined`
-    ret = {}
-    for attr of val
-      ret[attr] = deepCopy val[attr] if val.hasOwnProperty attr
-    return ret
-
-  # makes elements of array unique 
-  unique = (arr) ->
-    o = {}
-    arr.filter (i) -> if i of o then false else o[i] = true
-
-  ###
-  logical sum
-  @params arr: <Array<Array>>
-  ###
-  cup = (arr) -> unique Array::concat.apply([], arr)
-
-  # quote v
-  quo = (v) -> "\"" + v.toString().split("\"").join("\\\"") + "\""
- 
-  # backquote v
-  bq = (v) -> "`" + v + "`"
-  
-  # arrayize if not
-  arrayize = (v, empty) -> if Array.isArray(v) then v else if (empty and not v?) then [] else [v]
-  
-  # objectize if string
-  objectize = (k, v) ->
-    return k  unless typeof k is "string"
-    obj = {}
-    obj[k] = v
-    return obj
-  
-  # logical conjunction of arr1<Array> and arr2 <Array>
-  # arr1.length should be much larger than arr2.length
-  conjunction = (arr1, arr2) ->
-    hash = {}
-    i = 0
-    l = arr2.length
-    while i < l
-      hash[arr2[i]] = true
-      i++
-    ret = []
-    j = 0
-    l = arr1.length
-    while j < l
-      v = arr1[j]
-      ret.push(v) if hash[v]?
-      j++
-    ret
-
   SortedList = require("sortedlist")  unless SortedList
   isTitanium = (typeof Ti is "object" and typeof Titanium is "object" and Ti is Titanium)
   isNode = not isTitanium and (typeof module is "object" and typeof exports is "object" and module.exports is exports)
@@ -2022,6 +1948,84 @@
       Queries.classes.equal.call this, col, v, cls
     , this)
 
+  ######################
+  # UTILITY FUNCTIONS
+  ######################
+
+  # no operation
+  noop = ->
+
+  # throws error
+  err = (args...)->
+    args.push "(undocumented error)" if args.length is 0
+    args.unshift "[JSRel]"
+    throw new Error(args.join(" "))
+  
+  ###
+  shallowly copies the given object
+  ###
+  copy = (obj) ->
+    ret = {}
+    for attr of obj
+      ret[attr] = obj[attr]  if obj.hasOwnProperty(attr)
+    ret
+  
+  ###
+  deeply copies the given value
+  ###
+  deepCopy = (val) ->
+    return val.map(deepCopy)  if Array.isArray(val)
+    return val if typeof val isnt "object" or val is null or val is `undefined`
+    ret = {}
+    for attr of val
+      ret[attr] = deepCopy val[attr] if val.hasOwnProperty attr
+    return ret
+
+  # makes elements of array unique 
+  unique = (arr) ->
+    o = {}
+    arr.filter (i) -> if i of o then false else o[i] = true
+
+  ###
+  logical sum
+  @params arr: <Array<Array>>
+  ###
+  cup = (arr) -> unique Array::concat.apply([], arr)
+
+  # quote v
+  quo = (v) -> "\"" + v.toString().split("\"").join("\\\"") + "\""
+ 
+  # backquote v
+  bq = (v) -> "`" + v + "`"
+  
+  # arrayize if not
+  arrayize = (v, empty) -> if Array.isArray(v) then v else if (empty and not v?) then [] else [v]
+  
+  # objectize if string
+  objectize = (k, v) ->
+    return k  unless typeof k is "string"
+    obj = {}
+    obj[k] = v
+    return obj
+  
+  # logical conjunction of arr1<Array> and arr2 <Array>
+  # arr1.length should be much larger than arr2.length
+  conjunction = (arr1, arr2) ->
+    hash = {}
+    i = 0
+    l = arr2.length
+    while i < l
+      hash[arr2[i]] = true
+      i++
+    ret = []
+    j = 0
+    l = arr1.length
+    while j < l
+      v = arr1[j]
+      ret.push(v) if hash[v]?
+      j++
+    ret
+
   ###
   generates comparison function
 
@@ -2053,4 +2057,5 @@
   generateCompare[Table._NUM] = SortedList.compares["number"]
   generateCompare[Table._STR] = SortedList.compares["string"]
 
-  JSRel
+  # exporting
+  return JSRel
