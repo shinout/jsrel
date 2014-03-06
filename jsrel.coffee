@@ -7,499 +7,7 @@
     root.JSRel = factory(root.SortedList)
   return
 ) this, (SortedList) ->
-  
-  ###
-  initialization
-  ###
-  
-  # storages
-  
-  ###
-  JSRel static variables
-  ###
-  
-  ###
-  arguments
-  - uniqId   :
-  - name     :
-  - storage  :
-  - autosave :
-  - format   : format of tblData to parse (one of Raw, Schema, Compressed)
-  - tblData  :
-  
-  public
-  - id
-  - name
-  - tables : list of tables (everytime dynamically created)
-  
-  private
-  - _storage  : storage name
-  - _autosave : boolean
-  - _tblInfos : { tableName => Table object }
-  - _hooks    : { eventName => [function, function...] }
-  ###
-  
-  # create table instances
-  
-  ###
-  JSRel.use(uniqId, options)
-  Creates an instance
-  ###
-  
-  ###
-  JSRel.$import(uniqId, str, options)
-  ###
-  
-  # TODO UNIQID CHECK
-  
-  ###
-  free the db
-  ###
-  
-  ###
-  remove the db
-  ###
-  
-  ###
-  JSRel private methods
-  ###
-  
-  ###
-  JSRel instance variables
-  ###
-  
-  ###
-  jsrel.tables
-  ###
-  
-  ###
-  jsrel.schema
-  getting canonical schema
-  ###
-  
-  ###
-  jsrel.table(tableName)
-  ###
-  
-  ###
-  jsrel.save(compress)
-  ###
-  
-  ###
-  jsrel.origin(): get saved data
-  ###
-  
-  ###
-  jsrel.$export(noCompress)
-  ###
-  
-  ###
-  jsrel.toSQL()
-  ###
-  
-  ###
-  jsrel.close()
-  ###
-  
-  # unimplemented
-  
-  ###
-  jsrel.on()
-  ###
-  
-  ###
-  jsrel.off()
-  ###
-  
-  ###
-  jsrel.drop(tableName1, tableName2, ...)
-  ###
-  # key: table name of referring table, value: column name
-  
-  # check dependencies
-  
-  # try deleting tables referring the table if required
-  # required column
-  
-  # deletion
-  
-  # delete relation
-  
-  # delete props
-  
-  # delete from db
-  
-  # set null to referring columns
-  
-  ###
-  JSRel instance private methods
-  ###
-  
-  ###
-  emitting event (all functions are synchronously called.)
-  jsrel._emit()
-  ###
-  # first argument
-  
-  ###
-  JSRel.Table instance variables
-  ###
-  
-  ###
-  Table
-  
-  arguments
-  name    : (string) table name
-  db      : (JSRel)
-  colData : table information
-  format  : format of tblData to parse (one of Raw, Schema, Compressed)
-  
-  public
-  - columns   : list of columns
-  - name      : table name
-  - db        : id of the parent JSRel (externally set)
-  
-  private
-  - _colInfos  : { colName => column Info object }
-  - _indexes   : { columns => sorted list }
-  - _idxKeys   : { column  => list of idx column sets}
-  - _classes   : { columns => classes hash object}
-  - _data      : { id      => record }
-  - _rels      : { RelName => related table name }
-  - _referreds : { referring table name => { column => required or not} } (externally set)
-  ###
-  
-  # Private values. They can be directly input and replaced.
-  
-  # put column data to table instances
-  
-  ###
-  table.ins(obj)
-  ###
-  
-  # converting related object
-  
-  # if non-forced insertion, auto-columns are removed.
-  
-  # cast type if possible. Otherwise throw an exception
-  
-  # check relations
-  
-  # set id, ins_at, upd_at
-  
-  # insert a new value
-  
-  # unique index checking (including this._indexes.id)
-  # rollback
-  
-  # save indexes
-  
-  # save classes
-  # autosave
-  # FIXME : non-array value is set to obj[exTbl] (rare)
-  
-  ###
-  table.upd(obj)
-  ###
-  
-  # checking id
-  
-  # delete timestamp (prevent manual update)
-  
-  # converting related object
-  # cast given data if possible
-  
-  # checking related tables
-  
-  # remove old indexes
-  
-  # update
-  
-  # unique index checking for updKeys
-  # rollback
-  
-  # update indexes
-  
-  # update classes
-  
-  # updating 1:N objects
-  # autosave
-  # FIXME : non-array value is set to obj[exTbl] (rare)
-  
-  # delete related objects
-  
-  # update related objects
-  
-  # insert new objects
-  
-  ###
-  table.find(query, options)
-  (_priv is a private argument)
-  ###
-  
-  # search
-  
-  # join
-  # inner + outer joins
-  # inner joins
-  
-  # joining 1:N relation
-  
-  # inner join filter
-  
-  # order by
-  
-  # offset, limit
-  
-  # select
-  
-  # group by (unstable)
-  
-  ###
-  table.one(query, options)
-  ###
-  
-  # if (!options && !_priv) return this._data[query] || null;
-  
-  ###
-  table.count(query)
-  ###
-  
-  ###
-  table.del(id)
-  ###
-  
-  # delete index
-  # for debugging
-  # for debugging
-  
-  # delete classes
-  
-  # delete object
-  
-  # delete referring columns
-  # delete
-  # set null
-  # autosave
-  
-  ###
-  JSRel.Table private functions
-  ###
-  
-  ###
-  get new id
-  ###
-  
-  ###
-  do optimal search
-  returns id list
-  ###
-  
-  ###
-  search using index
-  ###
-  # temporary register the data
-  # remove temporary object
-  
-  ###
-  search using index with column name and value
-  ###
-  
-  ###
-  converts columns of related objects to xxx_id
-  ###
-  # xxxx_id priors to xxxx
-  
-  ###
-  cast obj[colName]
-  FIXME sql compatible type!
-  ###
-  
-  ###
-  check if there are duplicated entries or not
-  if exists, throw an exception.
-  ###
-  # (FIXME) private API of SortedList
-  
-  ###
-  compress current state
-  ###
-  
-  ###
-  compress data
-  ###
-  
-  ###
-  decompress data
-  ###
-  
-  ###
-  compress classes
-  ###
-  
-  ###
-  decompress classes
-  ###
-  
-  # compress relations
-  
-  ###
-  SQL
-  ###
-  # TODO alert to developers.
-  
-  # structure
-  # TODO alert to developers.
-  
-  ###
-  parse uncompressed data
-  ###
-  
-  # set _indexes
-  # FIXME private API of SortedList
-  
-  ###
-  decompress compressed data
-  ###
-  
-  ###
-  ( called only from JSRel#_parseSchema() )
-  ###
-  
-  # getting indexes, uniques, classes
-  
-  # set default columns
-  
-  # parsing and registering columns
-  
-  # creating relation indexes, relation info
-  # register to a referring table
-  
-  # registering meta infos (index, unique, class)
-  
-  # setting _idxKeys
-  
-  ###
-  set index columns
-  ###
-  
-  # reduce bytesize for SQL index
-  
-  # (len <= 2) || err('1000bytes');
-  
-  # if duplicated, the former is preferred
-  
-  ###
-  get sortedList
-  ###
-  
-  ###
-  get index keys from indexes
-  ###
-  
-  ###
-  set class index columns
-  if duplicated, the former is preferred.
-  ###
-  
-  ###
-  get join infos
-  
-  joinInfo:
-  tbl    : table name
-  col    : column name
-  req    : required or not
-  query  : query
-  options: options
-  name   : name
-  ###
-  
-  # get relation type
-  
-  # get subquery, suboptions
-  
-  ###
-  resolve table name and column name.
-  returns reltype
-  ###
-  # checking N:M relation ("via")
-  # len == 2
-  
-  ###
-  normalizing meta infos
-  ###
-  
-  ###
-  parse definition of columns
-  ###
-  # default object
-  # @see README.md #column description
-  # must be table name
-  # in related columns, values are required by default
-  
-  # sort keys with order(s)
-  
-  # select columns
-  
-  # when cols is one column
-  
-  # when cols is not defined
-  
-  # bind objects
-  
-  # when cols is array
-  
-  # bind objects
-  
-  # if object of the given id match the query, returns id. otherwise returns false
-  
-  # normalize query
-  
-  # report subquery
-  
-  # slice array with offset and limit
-  
-  # build an object to explain find()
-  
-  ###
-  generate comparison function
-  ###
-  generateCompare = (types, columns, data) ->
-    types = arrayize(types)
-    columns = arrayize(columns)
 
-    if columns.length is 1
-      return compares[Table._NUM]  if columns[0] is "id"
-      fn = compares[types[0]]
-      col = columns[0]
-      return (id1, id2) ->
-        fn data[id1][col], data[id2][col]
-    (id1, id2) ->
-      a = data[id1]
-      b = data[id2]
-      ret = 0
-      types.some (type, k) ->
-        col = columns[k]
-        ret = compares[type](a[col], b[col])
-        ret
-
-      ret
-  
-  # basic comparison functions
-  # (FIXME) private API of SortedList
-  # (FIXME) private API of SortedList
-  
-  ###
-  shortcut
-  ###
-  
-  ###
-  Queries
-  ###
-  
-  ###
-  Utility functions without referencing any outer scopes
-  ###
   noop = ->
   err = (args...)->
     args.unshift "[JSRel]"
@@ -1115,8 +623,8 @@
       ), this
     catch e
       delete @_data[insObj.id]
-
-      throw ereturn null
+      throw e
+      return null
     Object.keys(@_indexes).forEach ((columns) ->
       list = @_indexes[columns]
       list.insert insObj.id
@@ -2322,12 +1830,6 @@
     obj.orders = []  unless obj.orders
     obj
 
-  compares = {}
-  compares[Table._BOOL] = (a, b) ->
-    (if (a is b) then 0 else (if (a) then 1 else -1))
-
-  compares[Table._NUM] = SortedList.compares["number"]
-  compares[Table._STR] = SortedList.compares["string"]
   Object.keys(Table::).forEach (name) ->
     return  if name.charAt(0) is "_"
     method = Table::[name]
@@ -2515,5 +2017,35 @@
       Queries.classes.equal.call this, col, v, cls
     , this)
 
-  JSRel
+  ###
+  generates comparison function
 
+  @types   : data type of the column(s)
+  @columns : column name(s)
+  @data    : data of the column(s)
+  ###
+  generateCompare = (types, columns, data) ->
+    types = arrayize types
+    columns = arrayize columns
+
+    if columns.length is 1
+      return generateCompare[Table._NUM]  if columns[0] is "id"
+      fn = generateCompare[types[0]]
+      col = columns[0]
+      return (id1, id2) -> fn data[id1][col], data[id2][col]
+
+    return (id1, id2) ->
+      a = data[id1]
+      b = data[id2]
+      for type, k in types
+        col = columns[k]
+        result = generateCompare[type](a[col], b[col])
+        return result if result
+      return 0
+
+  # basic comparison functions
+  generateCompare[Table._BOOL] = (a, b) -> if (a is b) then 0 else if a then 1 else -1
+  generateCompare[Table._NUM] = SortedList.compares["number"]
+  generateCompare[Table._STR] = SortedList.compares["string"]
+
+  JSRel
