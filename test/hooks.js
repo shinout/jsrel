@@ -1,4 +1,5 @@
-var JSRel = require('../jsrel');
+require("coffee-script/register");
+var JSRel = require('../jsrel.coffee');
 var vows = require('vows');
 var assert = require('assert');
 var fs = require("fs");
