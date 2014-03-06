@@ -18,7 +18,7 @@
     throw new Error(args.join(" "))
   
   ###
-  shallowly copy the given object
+  shallowly copies the given object
   ###
   copy = (obj) ->
     ret = {}
@@ -27,27 +27,38 @@
     ret
   
   ###
-  deeply copy the given value
+  deeply copies the given value
   ###
   deepCopy = (val) ->
     return val.map(deepCopy)  if Array.isArray(val)
-    return val  if typeof val isnt "object" or val is null or val is `undefined`
+    return val if typeof val isnt "object" or val is null or val is `undefined`
     ret = {}
     for attr of val
-      ret[attr] = deepCopy val[attr]  if val.hasOwnProperty attr
+      ret[attr] = deepCopy val[attr] if val.hasOwnProperty attr
     return ret
 
+  ###
+  makes elements of array unique 
+  ###
   unique = (arr) ->
     o = {}
-    arr.filter (i) ->
-      (if i of o then false else o[i] = true)
+    arr.filter (i) -> if i of o then false else o[i] = true
 
-  cup = (arr) ->
-    unique Array::concat.apply([], arr)
-  quo = (v) ->
-    "\"" + v.toString().split("\"").join("\\\"") + "\""
-  bq = (v) ->
-    "`" + v + "`"
+  ###
+  logical sum
+  @params arr: <Array<Array>>
+  ###
+  cup = (arr) -> unique Array::concat.apply([], arr)
+
+  ###
+  quote v
+  ###
+  quo = (v) -> "\"" + v.toString().split("\"").join("\\\"") + "\""
+ 
+  ###
+  backquote v
+  ###
+  bq = (v) -> "`" + v + "`"
   
   # arrayize if not
   arrayize = (v, empty) ->
