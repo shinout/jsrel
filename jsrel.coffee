@@ -7,7 +7,9 @@
     root.JSRel = factory(root.SortedList)
   return
 ) this, (SortedList) ->
-
+  ######################
+  # ENVIRONMENTS
+  ######################
   SortedList = require("sortedlist")  unless SortedList
   isTitanium = (typeof Ti is "object" and typeof Titanium is "object" and Ti is Titanium)
   isNode = not isTitanium and (typeof module is "object" and typeof exports is "object" and module.exports is exports)
@@ -23,18 +25,17 @@
 
     removeItem: (id) ->
       delete mockData[id]
-
-      return
   )()
+
   if isBrowser
-    storages.local = window.localStorage
+    storages.local   = window.localStorage
     storages.session = window.sessionStorage
   if isTitanium
     fs = Ti.Filesystem
     storages.file =
       getItem: (k) ->
         file = fs.getFile(k.toString())
-        (if file.exists() then fs.getFile(k.toString()).read().text else null)
+        if file.exists() then fs.getFile(k.toString()).read().text else null
 
       setItem: (k, v) ->
         fs.getFile(k.toString()).write v.toString()
@@ -56,6 +57,10 @@
 
       removeItem: (k) ->
         fs.unlinkSync k
+
+  ######################
+  # JSRel 
+  ######################
   JSRel = (uniqId, name, storage, autosave, format, tblData) ->
     Object.defineProperty this, "id",
       value: uniqId
