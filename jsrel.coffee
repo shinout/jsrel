@@ -8,12 +8,14 @@
   return
 ) this, (SortedList) ->
 
+  # no operation
   noop = ->
+
+  # throws error
   err = (args...)->
+    args.push "(undocumented error)" if args.length is 0
     args.unshift "[JSRel]"
-    e = args.join(" ")
-    e = "(undocumented error)"  unless e
-    throw new Error(e)
+    throw new Error(args.join(" "))
   
   ###
   shallowly copy the given object
