@@ -27,6 +27,12 @@ function order(N, M, L) {
   }
   console.timeEnd("hashFilter");
 
+  console.time("hashFilter2");
+  for (var c=1; c<L; c++) {
+    var result2 = hashFilter2(arr, arr2);
+  }
+  console.timeEnd("hashFilter2");
+
   console.time("sort");
   for (var c=0; c<L; c++) {
     var result3 = arr2.sort(function(a, b) {
@@ -92,6 +98,16 @@ function hashFilter(arrToItr, arrToHash) {
   for (var j=0, l=arrToItr.length; j<l; j++) {
     var v = arrToItr[j];
     if (hash[v] != null) ret[k++] = v;
+  }
+  return ret;
+}
+function hashFilter2(arrToItr, arrToHash) {
+  var hash = {};
+  for (var i=0, l=arrToHash.length; i<l; i++) hash[arrToHash[i]] = true;
+  var ret = [];
+  for (var j=0, l=arrToItr.length; j<l; j++) {
+    var v = arrToItr[j];
+    if (hash[v] != null) ret.push(v);
   }
   return ret;
 }

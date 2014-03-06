@@ -37,9 +37,7 @@
       ret[attr] = deepCopy val[attr] if val.hasOwnProperty attr
     return ret
 
-  ###
-  makes elements of array unique 
-  ###
+  # makes elements of array unique 
   unique = (arr) ->
     o = {}
     arr.filter (i) -> if i of o then false else o[i] = true
@@ -50,46 +48,40 @@
   ###
   cup = (arr) -> unique Array::concat.apply([], arr)
 
-  ###
-  quote v
-  ###
+  # quote v
   quo = (v) -> "\"" + v.toString().split("\"").join("\\\"") + "\""
  
-  ###
-  backquote v
-  ###
+  # backquote v
   bq = (v) -> "`" + v + "`"
   
   # arrayize if not
-  arrayize = (v, empty) ->
-    (if Array.isArray(v) then v else (if (empty and not v?) then [] else [v]))
+  arrayize = (v, empty) -> if Array.isArray(v) then v else if (empty and not v?) then [] else [v]
   
   # objectize if string
   objectize = (k, v) ->
     return k  unless typeof k is "string"
     obj = {}
     obj[k] = v
-    obj
+    return obj
   
-  # sort arrToHash by order of arrToItr
-  hashFilter = (arrToItr, arrToHash) ->
+  # logical conjunction of arr1<Array> and arr2 <Array>
+  # arr1.length should be much larger than arr2.length
+  conjunction = (arr1, arr2) ->
     hash = {}
     i = 0
-    l = arrToHash.length
-
+    l = arr2.length
     while i < l
-      hash[arrToHash[i]] = true
+      hash[arr2[i]] = true
       i++
-    ret = new Array(arrToHash.length)
-    k = 0
+    ret = []
     j = 0
-    l = arrToItr.length
-
+    l = arr1.length
     while j < l
-      v = arrToItr[j]
-      ret[k++] = v  if hash[v]?
+      v = arr1[j]
+      ret.push(v) if hash[v]?
       j++
     ret
+
   SortedList = require("sortedlist")  unless SortedList
   isTitanium = (typeof Ti is "object" and typeof Titanium is "object" and Ti is Titanium)
   isNode = not isTitanium and (typeof module is "object" and typeof exports is "object" and module.exports is exports)
@@ -1068,7 +1060,7 @@
         else
           err "undefined condition", quo(condType)
     result = Queries[searchType][condType].call(this, col, value, lists[searchType] or @_indexes.id)
-    ret = (if (searchType is "noIndex" or not ids) then result else hashFilter(ids, result))
+    ret = (if (searchType is "noIndex" or not ids) then result else conjunction(ids, result))
     if report
       report.searches.push
         searchType: searchType
@@ -1720,7 +1712,7 @@
             method: "index"
 
         idx = @_indexes[k]
-        keys = hashFilter(idx, keys)
+        keys = conjunction(idx, keys)
         keys = keys.reverse()  if orderType is "desc"
       else
         keys = keys.slice().sort(generateCompare(@_colInfos[k].type, k, @_data))
