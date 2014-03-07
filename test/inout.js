@@ -219,10 +219,31 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
       assert.equal(comp, newDB.$export());
     },
 
-    "cloning with empty DB" : function(v) {
-      var comp  = emptyDB.$export();
-      var newDB = JSRel.$import("AnotherEmpty", comp);
+    "alias" : function(v) {
+      var comp  = db.$export();
+      var newDB = JSRel.import("importAlias", comp);
       assert.equal(comp, newDB.$export());
+    },
+
+    "cloning with invalid storage name" : function(v) {
+      var comp  = emptyDB.$export();
+      try {
+        var newDB = JSRel.$import("invalidStorageName", comp, {storage: "xxx"});
+      }
+      catch(e){
+        assert.match(e.message, /options\.storage/);
+      }
+    },
+
+    "cloning with options" : function(v) {
+      var comp  = emptyDB.$export();
+      var newDB = JSRel.$import("cloneWithOption", comp, {storage: "mock", autosave: true, name: "cloned"});
+      assert.equal(emptyDB._storage, "file")
+      assert.equal(emptyDB.name, emptyDB.id)
+      assert.isFalse(emptyDB._autosave)
+      assert.equal(newDB._storage, "mock")
+      assert.equal(newDB.name, "cloned")
+      assert.isTrue(newDB._autosave)
     },
 
     "cloning with empty DB (raw)" : function(v) {

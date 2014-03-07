@@ -139,10 +139,11 @@
     # Creates instance if not exist. Gets previously created instance if already exists
     # - uniqId: the identifier of the instance, used for storing the data to external system(file, localStorage...)
     # - options:
-    #   - storage(string) : type of external storage. one of mock, file local, session
+    #   - storage(string) : type of external storage. one of mock, file, local, session
     #   - schema (object) : DB schema. See README.md for detailed information
     #   - reset  (boolean) : if true, create db even if previous db with the same uniqId already exists.
     #   - autosave (boolean) : if true, save at every action(unstable...)
+    #   - name (string) : name of the db
     ###
     @use : (uniqId, options) ->
       uniqId or err "uniqId is required and must be non-zero value."
@@ -175,6 +176,9 @@
     # - dbJSONstr : data
     # - options:
     #   - force (boolean) : if true, overrides already-existing database.
+    #   - storage(string) : type of external storage. one of mock, file, local, session
+    #   - autosave (boolean) : if true, save at every action(unstable...)
+    #   - name (string) : name of the db
     ###
     @$import : (uniqId, dbJSONstr, options) ->
       options or (options = {})
@@ -188,7 +192,13 @@
       for key in [ "n","s","a","f","t" ]
         d.hasOwnProperty(key) or err("Invalid Format given.")
 
-      new JSRel(uniqId, d.n, d.s, d.a, d.f, d.t)
+      # trying to use given autosave, name and storage
+      autosave = if options.autosave? then !!options.autosave else d.a
+      name = if options.name? then options.name.toString() else d.n
+      storage = if options.storage? then options.storage.toString() else d.s
+      JSRel.storages[storage]?  or err "options.storage must be one of " + Object.keys(JSRel.storages).map(quo).join(",")
+
+      new JSRel(uniqId, name, storage, autosave, d.f, d.t)
 
     # alias
     @import = JSRel.$import
