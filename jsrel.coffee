@@ -156,15 +156,8 @@
       storage = @storages[options.storage]
       storage or err "options.storage must be one of " + Object.keys(@storages).map(quo).join(",")
 
-      dbJSONstr = storage.getItem(uniqId)
-      if dbJSONstr and not options.reset
-        try
-          dbinfo = JSON.parse(dbJSONstr)
-        catch e
-          err "Invalid JSON given. in db", quo(uniqId)
-        format = dbinfo.f
-        format or err "format is not given in stringified data in db", uniqId
-        tblData = dbinfo.t
+      if not options.reset and dbJSONstr = storage.getItem(uniqId)
+        JSRel.$import uniqId, dbJSONstr, force : false
       else
         options.schema and typeof options.schema is "object" or err "options.schema is required"
         Object.keys(options.schema).length or err "schema must contain at least one table"
@@ -175,7 +168,7 @@
 
 
     ###
-    # JSRel.$import(uniqId, str, options)
+    # JSRel.$import(uniqId, dbJSONstr, options)
     #
     # Creates instance from saved data
     # - uniqId: the identifier of the instance, used for storing the data to external system(file, localStorage...)
