@@ -173,26 +173,32 @@
       name = if options.name? then options.name.toString() else uniqId
       new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
 
-  JSRel.$import = (uniqId, str, options) ->
-    options or (options = {})
-    (uniqId) or err("uniqId is required and must be non-zero value.")
-    uniqId = uniqId.toString()
-    (options.force or not @_dbInfos[uniqId]?) or err("id", quo(uniqId), "already exists")
-    try
-      d = JSON.parse(str)
-    catch e
-      throw new Error("Invalid format given.")
-    [
-      "n"
-      "s"
-      "a"
-      "f"
-      "t"
-    ].forEach (k) ->
-      (d.hasOwnProperty(k)) or err("Invalid Format given.")
-      return
 
-    new JSRel(uniqId, d.n, d.s, d.a, d.f, d.t)
+    ###
+    # JSRel.$import(uniqId, str, options)
+    #
+    # Creates instance from saved data
+    # - uniqId: the identifier of the instance, used for storing the data to external system(file, localStorage...)
+    # - dbJSONstr : data
+    # - options:
+    #   - force (boolean) : if true, overrides already-existing database.
+    ###
+    @$import : (uniqId, dbJSONstr, options) ->
+      options or (options = {})
+      uniqId or err "uniqId is required and must be non-zero value."
+      uniqId = uniqId.toString()
+      (options.force or not @_dbInfos[uniqId]?) or err "id", quo(uniqId), "already exists"
+      try
+        d = JSON.parse(dbJSONstr)
+      catch e
+        err "Invalid format given to JSRel.$import"
+      for key in [ "n","s","a","f","t" ]
+        d.hasOwnProperty(key) or err("Invalid Format given.")
+
+      new JSRel(uniqId, d.n, d.s, d.a, d.f, d.t)
+
+    # alias
+    @import = JSRel.$import
 
   JSRel.free = (uniqId) ->
     delete @_dbInfos[uniqId]
