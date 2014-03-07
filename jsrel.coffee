@@ -1,4 +1,7 @@
 ((root, factory) ->
+  ###
+  # for AMD (Asynchronous Module Definition)
+  ###
   if typeof define is "function" and define.amd
     define ["sortedlist"], factory
   else if typeof module is "object" and module.exports
@@ -7,6 +10,7 @@
     root.JSRel = factory(root.SortedList)
   return
 ) this, (SortedList) ->
+
   ######################
   # ENVIRONMENTS
   ######################
@@ -58,81 +62,116 @@
       removeItem: (k) ->
         fs.unlinkSync k
 
+
   ######################
-  # JSRel 
+  # class JSRel 
   ######################
-  JSRel = (uniqId, name, storage, autosave, format, tblData) ->
-    Object.defineProperty this, "id",
-      value: uniqId
-      writable: false
+  ###
+  # public
+  # - id
+  # - name
+  # - tables : list of tables (everytime dynamically created)
+  # 
+  # private
+  # - _storage  : storage name
+  # - _autosave : boolean
+  # - _tblInfos : { tableName => Table object }
+  # - _hooks    : { eventName => [function, function...] }
+  ###
+  class JSRel
+    # key: id of db, value: instance of JSRel
+    @._dbInfos = {}
 
-    Object.defineProperty this, "name",
-      value: name
-      writable: false
+    ###
+    # class properties
+    # uniqIds: list of uniqIds
+    # isNode, isTitanium, isBrowser: environment detection. boolean 
+    # storage: available storages (array)
+    ###
+    Object.defineProperties @,
+      uniqIds:
+        get: -> Object.keys @_dbInfos
+        set: noop
 
-    @_storage = storage
-    @_autosave = autosave
-    @constructor._dbInfos[uniqId] =
-      db: this
-      storage: storage
+      isNode:
+        value: isNode
+        writable: false
 
-    @_hooks = {}
+      isTitanium:
+        value: isTitanium
+        writable: false
 
-    @_tblInfos = {}
-    for tblName, colData of tblData
-      @_tblInfos[tblName] = new Table(tblName, this, colData, format)
-    return
+      isBrowser:
+        value: isBrowser
+        writable: false
 
-  JSRel._dbInfos = {}
-  Object.defineProperties JSRel,
-    uniqIds:
-      get: ->
-        Object.keys @_dbInfos
+      storages:
+        value: storages
+        writable: false
 
-      set: noop
+    ###
+    # constructor
+    #
+    # called only from JSRel.use or JSRel.$import
+    # arguments
+    # - uniqId   :
+    # - name     :
+    # - storage  :
+    # - autosave :
+    # - format   : format of tblData to parse (one of Raw, Schema, Compressed)
+    # - tblData  :
+    ###
+    constructor: (uniqId, name, @_storage, @_autosave, format, tblData) ->
+      Object.defineProperty this, "id", value: uniqId, writable: false
+      Object.defineProperty this, "name", value: name, writable: false
 
-    isNode:
-      value: isNode
-      writable: false
+      @constructor._dbInfos[uniqId] = db: this, storage: @_storage
 
-    isTitanium:
-      value: isTitanium
-      writable: false
+      @_hooks = {}
+      @_tblInfos = {}
 
-    isBrowser:
-      value: isBrowser
-      writable: false
+      for tblName, colData of tblData
+        @_tblInfos[tblName] = new Table(tblName, this, colData, format)
 
-    storages:
-      value: storages
-      writable: false
+    ###
+    # JSRel.use(uniqId, option)
+    #
+    # Creates instance if not exist. Gets previously created instance if already exists
+    # - uniqId: the identifier of the instance, used for storing the data to external system(file, localStorage...)
+    # - options:
+    #   - storage(string) : type of external storage. one of mock, file local, session
+    #   - schema (object) : DB schema. See README.md for detailed information
+    #   - reset  (boolean) : if true, create db even if previous db with the same uniqId already exists.
+    #   - autosave (boolean) : if true, save at every action(unstable...)
+    ###
+    @use : (uniqId, options) ->
+      uniqId or err "uniqId is required and must be non-zero value."
+      uniqId = uniqId.toString()
 
-  JSRel.use = (uniqId, options) ->
-    (uniqId) or err("uniqId is required and must be non-zero value.")
-    uniqId = uniqId.toString()
-    return @_dbInfos[uniqId].db  if @_dbInfos[uniqId] and (not options or not options.reset)
-    (options) or err("options is required.")
-    options.storage = (if (isNode or isTitanium) then "file" else (if (isBrowser) then "local" else "mock"))  unless options.storage
-    storage = @storages[options.storage]
-    (storage) or err("options.storage must be one of [\"" + Object.keys(@storages).join("\", \"") + "\"]")
-    format = undefined
-    tblData = undefined
-    dbstr = storage.getItem(uniqId)
-    if dbstr and not options.reset
-      try
-        dbinfo = JSON.parse(dbstr)
-      catch e
-        throw new Error("Invalid JSON given. in db", quo(uniqId))
-      format = dbinfo.f
-      tblData = dbinfo.t
-      (format) or err("format is not given in stringified data in db", uniqId)
-    else
-      (options.schema and typeof options.schema is "object") or err("options.schema is required")
-      (Object.keys(options.schema).length) or err("schema must contain at least one table")
-      format = "Schema"
-      tblData = deepCopy(options.schema)
-    name = (if (options.name?) then options.name.toString() else uniqId)
-    new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
+      # if given uniqId already exists, load it
+      return @_dbInfos[uniqId].db if @_dbInfos[uniqId] and (not options or not options.reset)
+
+      options or err "options is required."
+      options.storage = (if (isNode or isTitanium) then "file" else if isBrowser then "local" else "mock") unless options.storage
+      storage = @storages[options.storage]
+      storage or err "options.storage must be one of " + Object.keys(@storages).map(quo).join(",")
+
+      dbJSONstr = storage.getItem(uniqId)
+      if dbJSONstr and not options.reset
+        try
+          dbinfo = JSON.parse(dbJSONstr)
+        catch e
+          err "Invalid JSON given. in db", quo(uniqId)
+        format = dbinfo.f
+        format or err "format is not given in stringified data in db", uniqId
+        tblData = dbinfo.t
+      else
+        options.schema and typeof options.schema is "object" or err "options.schema is required"
+        Object.keys(options.schema).length or err "schema must contain at least one table"
+        format = "Schema"
+        tblData = deepCopy(options.schema)
+      name = if options.name? then options.name.toString() else uniqId
+      new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
 
   JSRel.$import = (uniqId, str, options) ->
     options or (options = {})
