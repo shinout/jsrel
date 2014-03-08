@@ -53,6 +53,20 @@ vows.describe('== TESTING STATIC VALUES ==').addBatch({
 
   },
 
+  "JSRel.create": {
+    topic: schema,
+
+    "fails if already exists" : function(schema) {
+      var db1 = JSRel.create("first", { schema: schema});
+      try {
+        var db2 = JSRel.create("first", { schema: schema});
+      }
+      catch (e) {
+        assert.match(e.message, /uniqId "first" already exists/);
+      }
+    }
+  },
+
   "jsrel.name": {
     topic: JSRel.use("xxx", { schema: schema, name: "NAME" }),
 

@@ -225,6 +225,7 @@ JSRel API documentation
 **JSRel**
 
 - JSRel.use(uniqId, options)
+- JSRel.create(uniqId, options)
 - JSRel.$import(uniqId, data_str, options)
 - JSRel.uniqIds
 - JSRel.isNode
@@ -441,6 +442,11 @@ This column is <strong>required</strong> unless you set required: false.
 </td></tr>
 
 </table>
+
+### JSRel.create(uniqId, options) ###
+Creates instance if not exist, like **JSRel.use**.
+Throws an error if already exists, unlike **JSRel.use**.
+Arguments are the same as JSRel.use except options.reset, which is invalid in JSRel.create()
 
 
 ### JSRel.$import(uniqId, data_str, options) ###

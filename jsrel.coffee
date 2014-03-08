@@ -144,13 +144,18 @@
     #   - reset  (boolean) : if true, create db even if previous db with the same uniqId already exists.
     #   - autosave (boolean) : if true, save at every action(unstable...)
     #   - name (string) : name of the db
+    #   <private options>
+    #   - __create (boolean) : throws an error if db already exists.
     ###
     @use : (uniqId, options) ->
       uniqId or err "uniqId is required and must be non-zero value."
       uniqId = uniqId.toString()
 
       # if given uniqId already exists, load it
-      return @_dbInfos[uniqId].db if @_dbInfos[uniqId] and (not options or not options.reset)
+      stored = @_dbInfos[uniqId]
+      if stored?
+        err "uniqId", quo(uniqId), "already exists" if options?.__create
+        return @_dbInfos[uniqId].db if not options or not options.reset
 
       options or err "options is required."
       options.storage = (if (isNode or isTitanium) then "file" else if isBrowser then "local" else "mock") unless options.storage
@@ -167,6 +172,23 @@
       name = if options.name? then options.name.toString() else uniqId
       new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
 
+
+    ###
+    # JSRel.create(uniqId, option)
+    #
+    # Creates instance if not exist. Throws an error if already exists
+    # - uniqId: the identifier of the instance, used for storing the data to external system(file, localStorage...)
+    # - options:
+    #   - storage(string) : type of external storage. one of mock, file, local, session
+    #   - schema (object) : DB schema. See README.md for detailed information
+    #   - autosave (boolean) : if true, save at every action(unstable...)
+    #   - name (string) : name of the db
+    ###
+    @create : (uniqId, options) ->
+      options or (options = {})
+      delete options.reset
+      options.__create = true
+      JSRel.use uniqId, options
 
     ###
     # JSRel.$import(uniqId, dbJSONstr, options)
