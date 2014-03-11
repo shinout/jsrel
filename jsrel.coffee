@@ -225,64 +225,41 @@
     # alias
     @import = JSRel.$import
 
-  JSRel._compress = (tblData) ->
-    Object.keys(tblData).reduce ((ret, tblName) ->
-      ret[tblName] = tblData[tblName]._compress()
-      ret
-    ), {}
-
   Object.defineProperty JSRel::, "storage",
-    get: ->
-      JSRel.storages[@_storage]
-
+    get: -> JSRel.storages[@_storage]
     set: noop
 
   Object.defineProperty JSRel::, "tables",
-    get: ->
-      Object.keys @_tblInfos
-
+    get: -> Object.keys @_tblInfos
     set: noop
 
   Object.defineProperty JSRel::, "schema",
     get: ->
       tableDescriptions = {}
-      @tables.forEach ((tableName) ->
+      for tableName, tblInfo of @_tblInfos
         table = @_tblInfos[tableName]
         columnDescriptions = {}
-        table.columns.forEach (colName) ->
-          return  if colName is "id" or colName is "ins_at" or colName is "upd_at"
+        for colName in table.columns
+          continue if Table.AUTO_ADDED_COLUMNS[colName] #id, ins_at, upd_at
           colInfo = table._colInfos[colName]
           columnDescriptions[colName] =
-            type: Table.TYPES[colInfo.type]
+            type    : Table.TYPES[colInfo.type]
             required: colInfo.required
             _default: colInfo._default
 
-          return
-
         columnDescriptions.$indexes = []
         columnDescriptions.$uniques = []
-        Object.keys(table._indexes).forEach (col) ->
-          return  if col is "id" or col is "ins_at" or col is "upd_at"
-          unique = table._indexes[col]._unique
-          columnDescriptions[(if unique then "$uniques" else "$indexes")].push col.split(",")
-          return
+        for col, index of table._indexes
+          continue if Table.AUTO_ADDED_COLUMNS[colName]
+          columnDescriptions[(if index._unique then "$uniques" else "$indexes")].push col.split(",")
 
-        columnDescriptions.$classes = Object.keys(table._classes).map((col) ->
-          col.split ","
-        )
-        [
-          "$indexes"
-          "$uniques"
-          "$classes"
-        ].forEach (key) ->
-          delete columnDescriptions[key]  if columnDescriptions[key].length is 0
-          return
+        columnDescriptions.$classes = Object.keys(table._classes).map((col) -> col.split ",")
+
+        for metaKey in Table.COLUMN_META_KEYS
+          delete columnDescriptions[metaKey]  if columnDescriptions[metaKey].length is 0
 
         tableDescriptions[tableName] = columnDescriptions
-        return
-      ), this
       tableDescriptions
-
     set: noop
 
   JSRel::table = (tableName) ->
@@ -304,8 +281,13 @@
       s: @_storage
       a: @_autosave
 
-    ret.t = (if (noCompress) then @_tblInfos else JSRel._compress(@_tblInfos))
-    ret.f = (if (noCompress) then "Raw" else "Compressed")
+    ret.t = if noCompress then @_tblInfos else do(tblData = @_tblInfos)->
+      t = {}
+      for tblName, table of tblData
+        t[tblName] = table._compress()
+      return t
+
+    ret.f = if (noCompress) then "Raw" else "Compressed"
     JSON.stringify ret
 
   JSRel::toSQL = (options) ->
@@ -532,12 +514,13 @@
       ]
       writable: false
 
-    AUTO:
+    AUTO_ADDED_COLUMNS:
       value:
-        id: true
-        ins_at: true
-        upd_at: true
+        id: true, ins_at: true, upd_at: true
+      writable: false
 
+    COLUMN_META_KEYS:
+      value: ["$indexes", "$uniques", "$classes"]
       writable: false
 
     NOINDEX_MIN_LIMIT:
@@ -1088,7 +1071,7 @@
 
   Table::_cast = (colName, obj) ->
     val = obj[colName]
-    return  if Table.AUTO[colName] and not val?
+    return  if Table.AUTO_ADDED_COLUMNS[colName] and not val?
     colInfo = @_colInfos[colName]
     return  if typeof val is Table.TYPES[colInfo.type]
     if not colInfo.required and not val?
@@ -1391,11 +1374,7 @@
     for invalidColumn in Table.INVALID_COLUMNS
       err(invalidColumn, "is not allowed for a column name") if colData[invalidColumn]?
 
-    metaInfos = [
-      "$indexes"
-      "$uniques"
-      "$classes"
-    ].reduce((ret, k) ->
+    metaInfos = Table.COLUMN_META_KEYS.reduce((ret, k) ->
       ret[k] = arrayize(colData[k], true)
       delete colData[k]
 
