@@ -231,9 +231,6 @@ JSRel API documentation
 - JSRel.isNode
 - JSRel.isBrowser
 - JSRel.isTitanium
-- JSRel.free
-- JSRel.remove
-
 
 **instance of JSRel (jsrel)**
 
@@ -505,16 +502,6 @@ However, CoffeeScript enables us to use reserved words, then we can also use **J
 
 ### JSRel.isTitanium ###
 (ReadOnly boolean) if Titanium, true.
-
-
-### JSRel.free(uniqId) ###
-Free the region of database **uniqId**.
-This does not remove data from the storage.
-
-
-### JSRel.remove(uniqId) ###
-Remove data from the storage and from memory.
-
 
 instanceof JSRel (shown as jsrel)
 ------

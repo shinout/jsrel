@@ -225,18 +225,6 @@
     # alias
     @import = JSRel.$import
 
-  JSRel.free = (uniqId) ->
-    delete @_dbInfos[uniqId]
-
-    return
-
-  JSRel.remove = (uniqId) ->
-    jsrel = @_dbInfos[uniqId]
-    return  if not jsrel or not jsrel.db
-    @free uniqId
-    jsrel.db.storage.removeItem uniqId
-    return
-
   JSRel._compress = (tblData) ->
     Object.keys(tblData).reduce ((ret, tblName) ->
       ret[tblName] = tblData[tblName]._compress()
