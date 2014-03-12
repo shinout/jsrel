@@ -225,6 +225,51 @@
     # alias
     @import = JSRel.$import
 
+    
+    #####
+    # instance methods
+    #####
+
+    ###
+    # JSRel#table(tableName)
+    # gets table ofject by its name
+    ###
+    table : (tableName) ->
+      @_tblInfos[tableName]
+
+    ###
+    # JSRel#save(noCompress)
+    ###
+    save : (noCompress) ->
+      @_hooks["save:start"] and @_emit "save:start", @origin()
+      data = @$export(noCompress)
+      @storage.setItem @id, data
+      @_emit "save:end", data
+      this
+
+    ###
+    # JSRel#origin()
+    ###
+    origin : -> @storage.getItem @id
+
+    ###
+    # JSRel#$export(noCompress)
+    ###
+    $export : (noCompress) ->
+      ret =
+        n: @name
+        s: @_storage
+        a: @_autosave
+
+      ret.t = if noCompress then @_tblInfos else do(tblData = @_tblInfos)->
+        t = {}
+        for tblName, table of tblData
+          t[tblName] = table._compress()
+        return t
+
+      ret.f = if (noCompress) then "Raw" else "Compressed"
+      JSON.stringify ret
+
   Object.defineProperty JSRel::, "storage",
     get: -> JSRel.storages[@_storage]
     set: noop
@@ -261,34 +306,6 @@
         tableDescriptions[tableName] = columnDescriptions
       tableDescriptions
     set: noop
-
-  JSRel::table = (tableName) ->
-    @_tblInfos[tableName]
-
-  JSRel::save = (noCompress) ->
-    (@_hooks["save:start"]) and @_emit("save:start", @origin())
-    data = @$export(noCompress)
-    @storage.setItem @id, data
-    @_emit "save:end", data
-    this
-
-  JSRel::origin = ->
-    @storage.getItem @id
-
-  JSRel::$export = (noCompress) ->
-    ret =
-      n: @name
-      s: @_storage
-      a: @_autosave
-
-    ret.t = if noCompress then @_tblInfos else do(tblData = @_tblInfos)->
-      t = {}
-      for tblName, table of tblData
-        t[tblName] = table._compress()
-      return t
-
-    ret.f = if (noCompress) then "Raw" else "Compressed"
-    JSON.stringify ret
 
   JSRel::toSQL = (options) ->
     options or (options =
