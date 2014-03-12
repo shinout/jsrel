@@ -10,10 +10,7 @@
     root.JSRel = factory(root.SortedList)
   return
 ) this, (SortedList) ->
-  # defineGetters : define getters to Object.prototype
-  defineGetters = (cls, getters)->
-    Object.defineProperty(cls::, name, get: fn, set: noop) for name, fn of getters
-  
+
   ######################
   # ENVIRONMENTS
   ######################
@@ -64,6 +61,19 @@
       removeItem: (k) ->
         fs.unlinkSync k
 
+  ######################
+  # UTILITIES FOR DEFINING CLASSES
+  ######################
+
+  # defineGetters : define getters to object
+  defineGetters = (obj, getters)->
+    Object.defineProperty(obj, name, get: fn, set: noop) for name, fn of getters
+
+  # defineConstants : define constants to object
+  defineConstants = (obj, constants)->
+    for name, val of constants
+      Object.defineProperty(obj, name, value: val, writable: false)
+      Object.freeze val if typeof val is "object"
 
   ######################
   # class JSRel 
@@ -90,26 +100,14 @@
     # isNode, isTitanium, isBrowser: environment detection. boolean 
     # storage: available storages (array)
     ###
-    Object.defineProperties @,
-      uniqIds:
-        get: -> Object.keys @_dbInfos
-        set: noop
+    defineGetters @,
+      uniqIds: -> Object.keys @_dbInfos
 
-      isNode:
-        value: isNode
-        writable: false
-
-      isTitanium:
-        value: isTitanium
-        writable: false
-
-      isBrowser:
-        value: isBrowser
-        writable: false
-
-      storages:
-        value: storages
-        writable: false
+    defineConstants @,
+      isNode     : isNode
+      isTitanium : isTitanium
+      isBrowser  : isBrowser
+      storages   : storages
 
     ###
     # constructor
@@ -124,8 +122,7 @@
     # - tblData  :
     ###
     constructor: (uniqId, name, @_storage, @_autosave, format, tblData) ->
-      Object.defineProperty this, "id", value: uniqId, writable: false
-      Object.defineProperty this, "name", value: name, writable: false
+      defineConstants @, id: uniqId, name: name
 
       @constructor._dbInfos[uniqId] = db: this, storage: @_storage
 
@@ -227,7 +224,43 @@
     # alias
     @import = JSRel.$import
 
-    
+    #######
+    ##
+    ## JSRel instance properties (getter)
+    ##
+    #######
+    defineGetters @::,
+      storage: -> JSRel.storages[@_storage]
+
+      tables : -> Object.keys @_tblInfos
+
+      schema : ->
+        tableDescriptions = {}
+        for tableName, tblInfo of @_tblInfos
+          table = @_tblInfos[tableName]
+          columnDescriptions = {}
+          for colName in table.columns
+            continue if Table.AUTO_ADDED_COLUMNS[colName] #id, ins_at, upd_at
+            colInfo = table._colInfos[colName]
+            columnDescriptions[colName] =
+              type    : Table.TYPES[colInfo.type]
+              required: colInfo.required
+              _default: colInfo._default
+
+          columnDescriptions.$indexes = []
+          columnDescriptions.$uniques = []
+          for col, index of table._indexes
+            continue if Table.AUTO_ADDED_COLUMNS[colName]
+            columnDescriptions[(if index._unique then "$uniques" else "$indexes")].push col.split(",")
+
+          columnDescriptions.$classes = Object.keys(table._classes).map((col) -> col.split ",")
+
+          for metaKey in Table.COLUMN_META_KEYS
+            delete columnDescriptions[metaKey]  if columnDescriptions[metaKey].length is 0
+
+          tableDescriptions[tableName] = columnDescriptions
+        tableDescriptions
+
     #######
     ##
     ## JSRel instance methods
@@ -383,43 +416,6 @@
         fn.apply this, args
       return
 
-  #######
-  ##
-  ## JSRel instance properties (getter)
-  ##
-  #######
-  defineGetters JSRel,
-    storage: -> JSRel.storages[@_storage]
-
-    tables : -> Object.keys @_tblInfos
-
-    schema : ->
-      tableDescriptions = {}
-      for tableName, tblInfo of @_tblInfos
-        table = @_tblInfos[tableName]
-        columnDescriptions = {}
-        for colName in table.columns
-          continue if Table.AUTO_ADDED_COLUMNS[colName] #id, ins_at, upd_at
-          colInfo = table._colInfos[colName]
-          columnDescriptions[colName] =
-            type    : Table.TYPES[colInfo.type]
-            required: colInfo.required
-            _default: colInfo._default
-
-        columnDescriptions.$indexes = []
-        columnDescriptions.$uniques = []
-        for col, index of table._indexes
-          continue if Table.AUTO_ADDED_COLUMNS[colName]
-          columnDescriptions[(if index._unique then "$uniques" else "$indexes")].push col.split(",")
-
-        columnDescriptions.$classes = Object.keys(table._classes).map((col) -> col.split ",")
-
-        for metaKey in Table.COLUMN_META_KEYS
-          delete columnDescriptions[metaKey]  if columnDescriptions[metaKey].length is 0
-
-        tableDescriptions[tableName] = columnDescriptions
-      tableDescriptions
-
   ######################
   # class Table
   ######################
@@ -441,6 +437,42 @@
   class Table
 
     ###
+    # class properties
+    ###
+    defineConstants @,
+      _BOOL : 1
+      _NUM  : 2
+      _STR  : 3
+      _INT  : 4
+      _CHRS : 5
+      _CHR2 : 6
+      TYPES:
+        1: "boolean"
+        2: "number"
+        3: "string"
+        4: "number"
+        5: "string"
+        6: "string"
+      TYPE_SQLS:
+        1: "tinyint(1)"
+        2: "double"
+        3: "text"
+        4: "int"
+        5: "varchar(255)"
+        6: "varchar(160)"
+      INVALID_COLUMNS:
+        [ "id", "ins_at", "upd_at"
+          "on", "off"
+          "str", "num", "bool", "int", "float", "text", "chars", "double", "string", "number", "boolean"
+          "order", "limit", "offset", "join", "where", "as", "select", "explain"
+        ]
+      COLKEYS: [ "name", "type", "required", "_default", "rel", "sqltype" ]
+      COLUMN_META_KEYS: ["$indexes", "$uniques", "$classes"]
+      AUTO_ADDED_COLUMNS: id: true, ins_at: true, upd_at: true
+      NOINDEX_MIN_LIMIT: 100
+      ID_TEMP: 0
+
+    ###
     # constructor
     # 
     # arguments
@@ -451,8 +483,7 @@
     # 
     ###
     constructor: (name, db, colData, format) ->
-      Object.defineProperty this, "name", value: name, writable: false
-      Object.defineProperty this, "db", value: db, writable: false
+      defineConstants @, name: name, db: db
 
       @_colInfos = {}
       @_data = {}
@@ -466,119 +497,11 @@
       @["_parse" + format] colData
 
       columns = Object.keys(@_colInfos).sort()
-      Object.freeze columns
-      Object.defineProperty this, "columns", value: columns, writable: false
-
       colOrder = {}
       colOrder[col] = k for col, k in columns
-      Object.freeze colOrder
-      Object.defineProperty this, "colOrder", value: colOrder, writable: false
+      defineConstants(@, columns: columns, colOrder: colOrder)
 
   JSRel.Table = Table
-
-  Object.defineProperties Table,
-    _BOOL:
-      value: 1
-      writable: false
-
-    _NUM:
-      value: 2
-      writable: false
-
-    _STR:
-      value: 3
-      writable: false
-
-    _INT:
-      value: 4
-      writable: false
-
-    _CHRS:
-      value: 5
-      writable: false
-
-    _CHR2:
-      value: 6
-      writable: false
-
-    TYPES:
-      value:
-        1: "boolean"
-        2: "number"
-        3: "string"
-        4: "number"
-        5: "string"
-        6: "string"
-
-      writable: false
-
-    ID_TEMP:
-      value: 0
-      writable: false
-
-    INVALID_COLUMNS:
-      value: [
-        "id"
-        "ins_at"
-        "upd_at"
-        "on"
-        "off"
-        "str"
-        "num"
-        "bool"
-        "int"
-        "float"
-        "text"
-        "chars"
-        "double"
-        "string"
-        "number"
-        "boolean"
-        "order"
-        "limit"
-        "offset"
-        "join"
-        "where"
-        "as"
-        "select"
-        "explain"
-      ]
-      writable: false
-
-    AUTO_ADDED_COLUMNS:
-      value:
-        id: true, ins_at: true, upd_at: true
-      writable: false
-
-    COLUMN_META_KEYS:
-      value: ["$indexes", "$uniques", "$classes"]
-      writable: false
-
-    NOINDEX_MIN_LIMIT:
-      value: 100
-      writable: false
-
-    COLKEYS:
-      value: [
-        "name"
-        "type"
-        "required"
-        "_default"
-        "rel"
-        "sqltype"
-      ]
-      writable: false
-
-    TYPE_SQLS:
-      value:
-        1: "tinyint(1)"
-        2: "double"
-        3: "text"
-        4: "int"
-        5: "varchar(255)"
-        6: "varchar(160)"
-
-      writable: false
 
   Table::ins = (obj, options) ->
     options or (options = {})
