@@ -10,7 +10,10 @@
     root.JSRel = factory(root.SortedList)
   return
 ) this, (SortedList) ->
-
+  # defineGetters : define getters to Object.prototype
+  defineGetters = (cls, getters)->
+    Object.defineProperty(cls::, name, get: fn, set: noop) for name, fn of getters
+  
   ######################
   # ENVIRONMENTS
   ######################
@@ -18,7 +21,7 @@
   isTitanium = (typeof Ti is "object" and typeof Titanium is "object" and Ti is Titanium)
   isNode = not isTitanium and (typeof module is "object" and typeof exports is "object" and module.exports is exports)
   isBrowser = (typeof localStorage is "object" and typeof sessionStorage is "object")
-  storages = mock: (->
+  storages = mock: do->
     mockData = {}
     getItem: (id) ->
       mockData[id] or null
@@ -29,7 +32,6 @@
 
     removeItem: (id) ->
       delete mockData[id]
-  )()
 
   if isBrowser
     storages.local   = window.localStorage
@@ -386,16 +388,12 @@
   ## JSRel instance properties (getter)
   ##
   #######
-  Object.defineProperty JSRel::, "storage",
-    get: -> JSRel.storages[@_storage]
-    set: noop
+  defineGetters JSRel,
+    storage: -> JSRel.storages[@_storage]
 
-  Object.defineProperty JSRel::, "tables",
-    get: -> Object.keys @_tblInfos
-    set: noop
+    tables : -> Object.keys @_tblInfos
 
-  Object.defineProperty JSRel::, "schema",
-    get: ->
+    schema : ->
       tableDescriptions = {}
       for tableName, tblInfo of @_tblInfos
         table = @_tblInfos[tableName]
@@ -421,46 +419,63 @@
 
         tableDescriptions[tableName] = columnDescriptions
       tableDescriptions
-    set: noop
 
+  ######################
+  # class Table
+  ######################
+  ###
+  # public
+  # - columns   : list of columns
+  # - name      : table name
+  # - db        : id of the parent JSRel (externally set)
+  # 
+  # private
+  # - _colInfos  : { colName => column Info object }
+  # - _indexes   : { columns => sorted list }
+  # - _idxKeys   : { column  => list of idx column sets}
+  # - _classes   : { columns => classes hash object}
+  # - _data      : { id      => record }
+  # - _rels      : { RelName => related table name }
+  # - _referreds : { referring table name => { column => required or not} } (externally set)
+  ###
+  class Table
 
-  Table = (name, db, colData, format) ->
-    Object.defineProperty this, "name",
-      value: name
-      writable: false
+    ###
+    # constructor
+    # 
+    # arguments
+    # name    : (string) table name
+    # db      : (JSRel)
+    # colData : table information
+    # format  : format of tblData to parse (one of Raw, Schema, Compressed)
+    # 
+    ###
+    constructor: (name, db, colData, format) ->
+      Object.defineProperty this, "name", value: name, writable: false
+      Object.defineProperty this, "db", value: db, writable: false
 
-    Object.defineProperty this, "db",
-      value: db
-      writable: false
+      @_colInfos = {}
+      @_data = {}
+      @_indexes = {}
+      @_idxKeys = {}
+      @_classes = {}
+      @_rels = {}
+      @_referreds = {}
 
-    @_colInfos = {}
-    @_data = {}
-    @_indexes = {}
-    @_idxKeys = {}
-    @_classes = {}
-    @_rels = {}
-    @_referreds = {}
-    (typeof Table::["_parse" + format] is "function") or err("unknown format", quo(format), "given in", quo(@db.id))
-    this["_parse" + format] colData
-    columns = Object.keys(@_colInfos).sort()
-    Object.freeze columns
-    Object.defineProperty this, "columns",
-      value: columns
-      writable: false
+      (typeof @["_parse" + format] is "function") or err("unknown format", quo(format), "given in", quo(@db.id))
+      @["_parse" + format] colData
 
-    colOrder = {}
-    columns.forEach (col, k) ->
-      colOrder[col] = k
-      return
+      columns = Object.keys(@_colInfos).sort()
+      Object.freeze columns
+      Object.defineProperty this, "columns", value: columns, writable: false
 
-    Object.freeze colOrder
-    Object.defineProperty this, "colOrder",
-      value: colOrder
-      writable: false
-
-    return
+      colOrder = {}
+      colOrder[col] = k for col, k in columns
+      Object.freeze colOrder
+      Object.defineProperty this, "colOrder", value: colOrder, writable: false
 
   JSRel.Table = Table
+
   Object.defineProperties Table,
     _BOOL:
       value: 1
