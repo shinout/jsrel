@@ -226,9 +226,11 @@
     @import = JSRel.$import
 
     
-    #####
-    # instance methods
-    #####
+    #######
+    ##
+    ## JSRel instance methods
+    ##
+    #######
 
     ###
     # JSRel#table(tableName)
@@ -270,6 +272,120 @@
       ret.f = if (noCompress) then "Raw" else "Compressed"
       JSON.stringify ret
 
+
+    ###
+    # JSRel#toSQL(options)
+    ###
+    toSQL : (options) ->
+       options or (options =
+         type  : "mysql"
+         engine: "InnoDB"
+       )
+       if options.rails
+         n2s = (n) -> ("000" + n).match /..$/
+         datetime = (v) ->
+           t = new Date(v)
+           t.getFullYear() + "-" +
+           n2s(t.getMonth() + 1) + "-" +
+           n2s(t.getDate()) + " " +
+           n2s(t.getHours()) + ":" +
+           n2s(t.getMinutes()) + ":" +
+           n2s(t.getSeconds())
+ 
+         (options.columns) or (options.columns = {})
+         (options.values) or (options.values = {})
+         options.columns.upd_at = "updated_at"
+         options.columns.ins_at = "created_at"
+         options.values.upd_at = datetime
+         options.values.ins_at = datetime
+       ret = []
+       if options.db
+         dbname = (if options.db is true then @id else options.db.toString())
+         ret.push "CREATE DATABASE `" + dbname + "`;"
+         ret.push "USE `" + dbname + "`;"
+       tables = @tables
+       if not options.noschema and not options.nodrop
+         ret.push tables.map((tbl) ->
+           @table(tbl)._toDropSQL options
+         , this).reverse().join("\n")
+       unless options.noschema
+         ret.push tables.map((tbl) ->
+           @table(tbl)._toCreateSQL options
+         , this).join("\n")
+       unless options.nodata
+         ret.push tables.map((tbl) ->
+           @table(tbl)._toInsertSQL options
+         , this).join("\n")
+       ret.join "\n"
+
+    ###
+    # JSRel#on()
+    ###
+    on : (evtname, fn, options) ->
+      options or (options = {})
+      @_hooks[evtname] = []  unless @_hooks[evtname]
+      @_hooks[evtname][(if options.unshift then "unshift" else "push")] fn
+      return
+
+    ###
+    # JSRel#off()
+    ###
+    off : (evtname, fn) ->
+      return unless @_hooks[evtname]
+      return @_hooks[evtname] = null  unless fn?
+      @_hooks[evtname] = @_hooks[evtname].filter((f) -> fn isnt f)
+      return
+
+    ###
+    # JSRel#drop()
+    ###
+    drop : (tblNames...)->
+      nonRequiredReferringTables = {}
+      for tblName in tblNames
+        table = @_tblInfos[tblName]
+        table or err "unknown table name", quo(tblName), "in jsrel#drop"
+        for refTblName, refTables of table._referreds
+          for col, colInfo of refTables
+            unless colInfo
+              nonRequiredReferringTables[refTblName] = col
+            else if refTblName not in tblNames
+              err("table ", quo(tblName), "has its required-referring table", quo(refTblName), ", try jsrel#drop('" + tblName + "', '" + refTblName + "')")
+
+      for tblName in tblNames
+        table = @_tblInfos[tblName]
+        for relname, relTblName of table._rels
+          continue if relTblName in tblNames # skip if related table is already in deletion list
+          relTable = @_tblInfos[relTblName]
+          delete relTable._referreds[tblName]
+        for prop in ["_colInfos", "_indexes", "_idxKeys", "_classes", "_data", "_rels", "_referreds"]
+          delete table[prop]
+        delete @_tblInfos[tblName]
+
+      for refTblName, col of nonRequiredReferringTables
+        refTable = @_tblInfos[refTblName]
+        for id, record of refTable._data
+          record[col + "_id"] = null
+      return
+
+    ####
+    # private instance methods
+    ####
+
+    ###
+    # JSRel#_emit()
+    ###
+    _emit : (args...)->
+      evtname = args.shift()
+      return unless Array.isArray @_hooks[evtname]
+      for fn in @_hooks[evtname]
+        fn.apply this, args
+      return
+
+  #######
+  ##
+  ## JSRel instance properties (getter)
+  ##
+  #######
   Object.defineProperty JSRel::, "storage",
     get: -> JSRel.storages[@_storage]
     set: noop
@@ -307,123 +423,6 @@
       tableDescriptions
     set: noop
 
-  JSRel::toSQL = (options) ->
-    options or (options =
-      type: "mysql"
-      engine: "InnoDB"
-    )
-    if options.rails
-      datetime = (v) ->
-        n2s = (n) ->
-          ("000" + n).match /..$/
-        t = new Date(v)
-        t.getFullYear() + "-" + n2s(t.getMonth() + 1) + "-" + n2s(t.getDate()) + " " + n2s(t.getHours()) + ":" + n2s(t.getMinutes()) + ":" + n2s(t.getSeconds())
-
-      (options.columns) or (options.columns = {})
-      (options.values) or (options.values = {})
-      options.columns.upd_at = "updated_at"
-      options.columns.ins_at = "created_at"
-      options.values.upd_at = datetime
-      options.values.ins_at = datetime
-    ret = []
-    if options.db
-      dbname = (if options.db is true then @id else options.db.toString())
-      ret.push "CREATE DATABASE `" + dbname + "`;"
-      ret.push "USE `" + dbname + "`;"
-    tables = @tables
-    if not options.noschema and not options.nodrop
-      ret.push tables.map((tbl) ->
-        @table(tbl)._toDropSQL options
-      , this).reverse().join("\n")
-    unless options.noschema
-      ret.push tables.map((tbl) ->
-        @table(tbl)._toCreateSQL options
-      , this).join("\n")
-    unless options.nodata
-      ret.push tables.map((tbl) ->
-        @table(tbl)._toInsertSQL options
-      , this).join("\n")
-    ret.join "\n"
-
-  JSRel::close = ->
-
-  JSRel::on = (evtname, fn, options) ->
-    options or (options = {})
-    @_hooks[evtname] = []  unless @_hooks[evtname]
-    @_hooks[evtname][(if options.unshift then "unshift" else "push")] fn
-    return
-
-  JSRel::off = (evtname, fn) ->
-    return  unless @_hooks[evtname]
-    return @_hooks[evtname] = null  unless fn?
-    @_hooks[evtname] = @_hooks[evtname].filter((f) ->
-      fn isnt f
-    )
-    return
-
-  JSRel::drop = (tblNames...)->
-    nonRequiredReferringTables = {}
-    tblNames.forEach ((tblName) ->
-      table = @_tblInfos[tblName]
-      (table) or err("unknown table name", quo(tblName), "in jsrel#drop")
-      Object.keys(table._referreds).forEach (refTblName) ->
-        Object.keys(table._referreds[refTblName]).forEach (col) ->
-          if table._referreds[refTblName][col]
-            (tblNames.indexOf(refTblName) >= 0) or err("table ", quo(tblName), "has its required-referring table", quo(refTblName), ", try jsrel#drop('" + tblName + "', '" + refTblName + "')")
-          else
-            nonRequiredReferringTables[refTblName] = col
-          return
-
-        return
-
-      return
-    ), this
-    tblNames.forEach ((tblName) ->
-      table = @_tblInfos[tblName]
-      Object.keys(table._rels).forEach ((relname) ->
-        relTblName = table._rels[relname]
-        return  if tblNames.indexOf(relTblName) >= 0
-        relTable = @_tblInfos[relTblName]
-        delete relTable._referreds[tblName]
-
-        return
-      ), this
-      [
-        "_colInfos"
-        "_indexes"
-        "_idxKeys"
-        "_classes"
-        "_data"
-        "_rels"
-        "_referreds"
-      ].forEach ((prop) ->
-        delete table[prop]
-
-        return
-      ), this
-      delete @_tblInfos[tblName]
-
-      return
-    ), this
-    Object.keys(nonRequiredReferringTables).forEach ((refTblName) ->
-      col = nonRequiredReferringTables[refTblName]
-      refTable = @_tblInfos[refTblName]
-      Object.keys(refTable._data).forEach (id) ->
-        refTable._data[id][col + "_id"] = null
-        return
-
-      return
-    ), this
-    this
-
-  JSRel::_emit = (args...)->
-    evtname = args.shift()
-    if Array.isArray(@_hooks[evtname])
-      @_hooks[evtname].forEach (fn) ->
-        fn.apply this, args
-        return
-
-    return
 
   Table = (name, db, colData, format) ->
     Object.defineProperty this, "name",

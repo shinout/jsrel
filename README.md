@@ -660,6 +660,7 @@ Gets SQL string from the current schema and data.
 <tr><th>db</th>
 <td>boolean or string</td>
 <td>if true, create database whose name is id of the db, if string given, the value is set as database's name.
+if not set, database creation (CREATE DATABASE xxxx) does not occur.
 <td>null</td>
 <td>true</td>
 </tr>
