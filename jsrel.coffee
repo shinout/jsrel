@@ -501,110 +501,98 @@
       colOrder[col] = k for col, k in columns
       defineConstants(@, columns: columns, colOrder: colOrder)
 
-  JSRel.Table = Table
+    #######
+    ##
+    ## Table instance methods
+    ##
+    #######
 
-  Table::ins = (obj, options) ->
-    options or (options = {})
-    (obj and typeof obj is "object") or err("You must pass object to table.ins().")
-    @_convertRelObj obj
-    unless options.force
-      delete obj.id
+    ###
+    # Table#ins()
+    ###
+    ins : (argObj, options) ->
+      options or (options = {})
+      err "You must pass object to table.ins()." unless (argObj and typeof argObj is "object")
+      @_convertRelObj argObj
 
-      delete obj.ins_at
-
-      delete obj.upd_at
-    else
-      [
-        "id"
-        "ins_at"
-        "upd_at"
-      ].forEach (col) ->
-        obj[col] = Number(obj[col])  if col of obj
-        return
-
-    insObj = {}
-    @columns.forEach ((col) ->
-      insObj[col] = obj[col]
-      @_cast col, insObj
-      return
-    ), this
-    Object.keys(@_rels).forEach ((col) ->
-      idcol = col + "_id"
-      exId = insObj[idcol]
-      tbl = @db.table(@_rels[col])
-      required = @_colInfos[idcol].required
-      return  if not required and not exId?
-      exObj = tbl.one(exId)
-      if not required and not exObj?
-        insObj[idcol] = null
-        return
-      (exObj) or err("invalid external id", quo(idcol), ":", exId)
-      return
-    ), this
-    insObj.id or (insObj.id = @_getNewId())
-    (not @_data[insObj.id]) or err("the given id \"", insObj.id, "\" already exists.")
-    (insObj.id isnt Table.ID_TEMP) or err("id cannot be", Table.ID_TEMP)
-    insObj.ins_at = new Date().getTime()  unless insObj.ins_at?
-    insObj.upd_at = insObj.ins_at  unless insObj.upd_at?
-    @_data[insObj.id] = insObj
-    try
-      Object.keys(@_indexes).forEach ((idxName) ->
-        @_checkUnique idxName, insObj
-        return
-      ), this
-    catch e
-      delete @_data[insObj.id]
-      throw e
-      return null
-    Object.keys(@_indexes).forEach ((columns) ->
-      list = @_indexes[columns]
-      list.insert insObj.id
-      return
-    ), this
-    Object.keys(@_classes).forEach ((columns) ->
-      cls = @_classes[columns]
-      values = columns.split(",").map((col) ->
-        insObj[col]
-      ).join(",")
-      cls[values] = {}  unless cls[values]
-      cls[values][insObj.id] = 1
-      return
-    ), this
-    @db._emit "ins", @name, insObj
-    @db._emit "ins:" + @name, insObj
-    @_insertRelations obj, insObj
-    @db.save()  if @db._autosave
-    copy insObj
-
-  Table::_insertRelations = (obj, insObj) ->
-    Object.keys(@_referreds).forEach ((exTbl) ->
-      cols = Object.keys(@_referreds[exTbl])
-      inserts = {}
-      if cols.length is 1
-        col = cols[0]
-        arr = obj[exTbl] or obj[exTbl + "." + col]
-        return  unless Array.isArray(arr)
-        inserts[col] = arr
+      # id, ins_at, upd_at are removed unless options.force
+      unless options.force
+        delete argObj[col] for col of Table.AUTO_ADDED_COLUMNS
       else
-        cols.forEach (col) ->
-          arr = obj[exTbl + "." + col]
-          return  unless Array.isArray(arr)
-          inserts[col] = arr
-          return
+        argObj[col] = Number(argObj[col]) for col of Table.AUTO_ADDED_COLUMNS when col of argObj
 
-      Object.keys(inserts).forEach ((col) ->
-        arr = inserts[col]
-        tbl = @db.table(exTbl)
-        inserts[col].forEach (v) ->
-          v[col + "_id"] = insObj.id
-          tbl.ins v
-          return
+      insObj = {}
+      for col in @columns
+        insObj[col] = argObj[col]
+        @_cast col, insObj
 
-        return
-      ), this
-      return
-    ), this
-    return
+      # checking relation tables' id
+      for col, relTblName of @_rels
+        idcol = col + "_id"
+        exId = insObj[idcol]
+        relTable = @db.table(relTblName)
+        required = @_colInfos[idcol].required
+        continue if not required and not exId?
+        exObj = relTable.one(exId)
+
+        if not required and not exObj?
+          insObj[idcol] = null
+        else if exObj is null
+          err "invalid external id", quo(idcol), ":", exId
+
+      # setting id, ins_at, upd_at
+      if insObj.id?
+        err("the given id \"", insObj.id, "\" already exists.") if @_data[insObj.id]?
+        err("id cannot be", Table.ID_TEMP) if insObj.id is Table.ID_TEMP
+      else
+        insObj.id = @_getNewId()
+      insObj.ins_at = new Date().getTime()  unless insObj.ins_at?
+      insObj.upd_at = insObj.ins_at  unless insObj.upd_at?
+
+      @_data[insObj.id] = insObj
+
+      # inserting indexes, classes
+      try
+        @_checkUnique idxName, insObj for idxName of @_indexes
+      catch e
+        delete @_data[insObj.id]
+        throw e
+        return null
+
+      sortedList.insert insObj.id for idxName, sortedList of @_indexes
+
+      for columns, cls of @_classes
+        values = columns.split(",").map((col) -> insObj[col]).join(",")
+        cls[values] = {}  unless cls[values]
+        cls[values][insObj.id] = 1
+
+      # firing event (FOR PERFORMANCE, existing check @db._hooks runs before emitting)
+      @db._hooks["ins"] and @db._emit "ins", @name, insObj
+      @db._hooks["ins:" + @name] and @db._emit "ins:" + @name, insObj
+
+      # inserting relations
+      for exTblName, referred of @_referreds
+        cols = Object.keys referred
+        insertObjs = {}
+        if cols.length is 1
+          relatedObjs = argObj[exTblName] or argObj[exTblName + "." + cols[0]]
+          (insertObjs[cols[0]] = if Array.isArray then relatedObjs else [relatedObjs]) if relatedObjs
+        else
+          for col in cols
+            relatedObjs = argObj[exTblName + "." + col]
+            (insertObjs[col] = if Array.isArray then relatedObjs else [relatedObjs]) if relatedObjs
+
+        for col, relatedObjs of insertObjs
+          exTable = @db.table(exTblName)
+          for relObj in relatedObjs
+            relObj[col + "_id"] = insObj.id
+            exTable.ins relObj
+
+      # autosave, returns copy
+      @db.save()  if @db._autosave
+      copy insObj
+
+  JSRel.Table = Table
 
   Table::upd = (obj, options) ->
     options or (options = {})
