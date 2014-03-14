@@ -727,128 +727,129 @@
       @db.save()  if @db._autosave
       updObj
 
-  JSRel.Table = Table
-
-
-  Table::find = (query, options, _priv) ->
-    options or (options = {})
-    _priv or (_priv = {})
-    report = Table._buildReportObj(options.explain)
-    keys = @_indexes.id
-    query = (if (_priv.normalized) then query else Table._normalizeQuery(query))
-    if query
-      keys = cup(query.map((condsList) ->
-        ks = null
-        Object.keys(condsList).forEach ((column) ->
-          ks = cup(condsList[column].map((cond) ->
-            localKeys = (if ks then ks.slice() else null)
-            Object.keys(cond).forEach ((condType) ->
-              localKeys = @_optSearch(column, condType, cond[condType], localKeys, report)
+    ###
+    # Table#upd()
+    ###
+    find : (query, options, _priv) ->
+      options or (options = {})
+      _priv or (_priv = {})
+      report = Table._buildReportObj(options.explain)
+      keys = @_indexes.id
+      query = (if (_priv.normalized) then query else Table._normalizeQuery(query))
+      if query
+        keys = cup(query.map((condsList) ->
+          ks = null
+          Object.keys(condsList).forEach ((column) ->
+            ks = cup(condsList[column].map((cond) ->
+              localKeys = (if ks then ks.slice() else null)
+              Object.keys(cond).forEach ((condType) ->
+                localKeys = @_optSearch(column, condType, cond[condType], localKeys, report)
+                return
+              ), this
+              localKeys
+            , this))
+            return
+          ), this
+          ks
+        , this))
+      else report.searches.push searchType: "none"  if report
+      joins = null
+      joinCols = null
+      if options.join
+        joinInfos = @_getJoinInfos(options.join)
+        joins = {}
+        joinCols = []
+        reqCols = []
+        joinInfos.N.forEach ((info) ->
+          report and Table._reportSubQuery(report, info, "1:N")
+          idcol = info.col
+          name = info.name
+          tblObj = @db.table(info.tbl)
+          joinCols.push name
+          reqCols.push name  if info.req
+          if info.emptyArray
+            keys.forEach (id) ->
+              joins[id] = {}  unless joins[id]
+              joins[id][name] = []  unless joins[id][name]
               return
-            ), this
-            localKeys
-          , this))
-          return
-        ), this
-        ks
-      , this))
-    else report.searches.push searchType: "none"  if report
-    joins = null
-    joinCols = null
-    if options.join
-      joinInfos = @_getJoinInfos(options.join)
-      joins = {}
-      joinCols = []
-      reqCols = []
-      joinInfos.N.forEach ((info) ->
-        report and Table._reportSubQuery(report, info, "1:N")
-        idcol = info.col
-        name = info.name
-        tblObj = @db.table(info.tbl)
-        joinCols.push name
-        reqCols.push name  if info.req
-        if info.emptyArray
-          keys.forEach (id) ->
+  
+          tblObj.find(info.query, info.options,
+            usedTables: _priv.usedTables
+          ).forEach (result) ->
+            id = result[idcol]
             joins[id] = {}  unless joins[id]
             joins[id][name] = []  unless joins[id][name]
+            joins[id][name].push result
             return
-
-        tblObj.find(info.query, info.options,
-          usedTables: _priv.usedTables
-        ).forEach (result) ->
-          id = result[idcol]
-          joins[id] = {}  unless joins[id]
-          joins[id][name] = []  unless joins[id][name]
-          joins[id][name].push result
-          return
-
-        if info.offset? or info.limit?
-          Object.keys(joins).forEach (id) ->
-            arr = joins[id][name]
-            joins[id][name] = Table._offsetLimit(arr, info.offset, info.limit)  if arr
-            return
-
-        if info.select
-          if typeof info.select is "string"
+  
+          if info.offset? or info.limit?
             Object.keys(joins).forEach (id) ->
               arr = joins[id][name]
-              if arr
-                joins[id][name] = joins[id][name].map((v) ->
-                  v[info.select]
-                )
+              joins[id][name] = Table._offsetLimit(arr, info.offset, info.limit)  if arr
               return
-
-          else
-            (Array.isArray(info.select)) or err("typeof options.select must be one of string, null, array")
-            Object.keys(joins).forEach (id) ->
-              arr = joins[id][name]
-              if arr
-                joins[id][name] = join[id][name].map((v) ->
-                  info.select.reduce ((ret, k) ->
-                    ret[k] = v[k]
-                    ret
-                  ), {}
-                )
-              return
-
-        return
-      ), this
-      joinInfos[1].forEach ((info) ->
-        report and Table._reportSubQuery(report, info, "N:1")
-        idcol = info.col
-        name = info.name
-        tblObj = @db.table(info.tbl)
-        q = Table._normalizeQuery(info.query)
-        joinCols.push name
-        reqCols.push name  if info.req
-        keys.forEach ((id) ->
-          exId = tblObj._survive(@_data[id][idcol], q, true)
-          return  unless exId?
-          joins[id] = {}  unless joins[id]
-          joins[id][name] = tblObj._data[exId]
+  
+          if info.select
+            if typeof info.select is "string"
+              Object.keys(joins).forEach (id) ->
+                arr = joins[id][name]
+                if arr
+                  joins[id][name] = joins[id][name].map((v) ->
+                    v[info.select]
+                  )
+                return
+  
+            else
+              (Array.isArray(info.select)) or err("typeof options.select must be one of string, null, array")
+              Object.keys(joins).forEach (id) ->
+                arr = joins[id][name]
+                if arr
+                  joins[id][name] = join[id][name].map((v) ->
+                    info.select.reduce ((ret, k) ->
+                      ret[k] = v[k]
+                      ret
+                    ), {}
+                  )
+                return
+  
           return
         ), this
+        joinInfos[1].forEach ((info) ->
+          report and Table._reportSubQuery(report, info, "N:1")
+          idcol = info.col
+          name = info.name
+          tblObj = @db.table(info.tbl)
+          q = Table._normalizeQuery(info.query)
+          joinCols.push name
+          reqCols.push name  if info.req
+          keys.forEach ((id) ->
+            exId = tblObj._survive(@_data[id][idcol], q, true)
+            return  unless exId?
+            joins[id] = {}  unless joins[id]
+            joins[id][name] = tblObj._data[exId]
+            return
+          ), this
+          return
+        ), this
+        keys = keys.filter((id) ->
+          joinColObj = joins[id]
+          joinColObj = {}  unless joinColObj
+          reqCols.every (col) ->
+            joinColObj[col]
+  
+        , this)
+      keys = @_orderBy(keys, options.order, report)
+      keys = Table._offsetLimit(keys, options.offset, options.limit)
+      res = @_select(keys, options.select, joins, joinCols)
+      return res  unless options.groupBy
+      ret = {}
+      keyColumn = (if options.groupBy is true then "id" else options.key)
+      res.forEach (item) ->
+        ret[item[keyColumn]] = item
         return
-      ), this
-      keys = keys.filter((id) ->
-        joinColObj = joins[id]
-        joinColObj = {}  unless joinColObj
-        reqCols.every (col) ->
-          joinColObj[col]
+  
+      ret
 
-      , this)
-    keys = @_orderBy(keys, options.order, report)
-    keys = Table._offsetLimit(keys, options.offset, options.limit)
-    res = @_select(keys, options.select, joins, joinCols)
-    return res  unless options.groupBy
-    ret = {}
-    keyColumn = (if options.groupBy is true then "id" else options.key)
-    res.forEach (item) ->
-      ret[item[keyColumn]] = item
-      return
-
-    ret
-
+  JSRel.Table = Table
   Table::one = (query, options, _priv) ->
     query = id: query  if typeof query is "number" or not isNaN(Number(query))
     ret = @find(query, options, _priv)
