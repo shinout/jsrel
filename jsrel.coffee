@@ -201,8 +201,7 @@
     #   - autosave (boolean) : if true, save at every action(unstable...)
     #   - name (string) : name of the db
     ###
-    @$import : (uniqId, dbJSONstr, options) ->
-      options or (options = {})
+    @$import : (uniqId, dbJSONstr, options = {}) ->
       uniqId or err "uniqId is required and must be non-zero value."
       uniqId = uniqId.toString()
       (options.force or not @_dbInfos[uniqId]?) or err "id", quo(uniqId), "already exists"
@@ -311,11 +310,7 @@
     ###
     # JSRel#toSQL(options)
     ###
-    toSQL : (options) ->
-       options or (options =
-         type  : "mysql"
-         engine: "InnoDB"
-       )
+    toSQL : (options = type: "mysql", engine: "InnoDB") ->
        if options.rails
          n2s = (n) -> ("000" + n).match /..$/
          datetime = (v) ->
@@ -356,8 +351,7 @@
     ###
     # JSRel#on()
     ###
-    on : (evtname, fn, options) ->
-      options or (options = {})
+    on : (evtname, fn, options = {}) ->
       @_hooks[evtname] = []  unless @_hooks[evtname]
       @_hooks[evtname][(if options.unshift then "unshift" else "push")] fn
       return
@@ -511,8 +505,7 @@
     ###
     # Table#ins()
     ###
-    ins : (argObj, options) ->
-      options or (options = {})
+    ins : (argObj, options = {}) ->
       err "You must pass object to table.ins()." unless (argObj and typeof argObj is "object")
       @_convertRelObj argObj
 
@@ -596,8 +589,7 @@
     ###
     # Table#upd()
     ###
-    upd : (argObj, options) ->
-      options or (options = {})
+    upd : (argObj, options = {}) ->
       err "id is not found in the given object." if argObj is null or argObj.id is null or argObj.id is Table.ID_TEMP #TODO update without id
       argObj.id = Number(argObj.id) # TODO do not modify argument object
       oldObj = @_data[argObj.id]
@@ -730,9 +722,7 @@
     ###
     # Table#upd()
     ###
-    find : (query, options, _priv) ->
-      options or (options = {})
-      _priv or (_priv = {})
+    find : (query, options = {}, _priv = {}) ->
       report = Table._buildReportObj(options.explain)
       keys = @_indexes.id
       query = (if (_priv.normalized) then query else Table._normalizeQuery(query))
