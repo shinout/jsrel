@@ -471,6 +471,7 @@
       AUTO_ADDED_COLUMNS: id: true, ins_at: true, upd_at: true
       NOINDEX_MIN_LIMIT: 100
       ID_TEMP: 0
+      CLASS_EXISTING_VALUE: 1
 
     ###
     # constructor
@@ -564,7 +565,7 @@
       for columns, cls of @_classes
         values = columns.split(",").map((col) -> insObj[col]).join(",")
         cls[values] = {}  unless cls[values]
-        cls[values][insObj.id] = 1
+        cls[values][insObj.id] = Table.CLASS_EXISTING_VALUE
 
       # firing event (FOR PERFORMANCE, existing check @db._hooks runs before emitting)
       @db._hooks["ins"] and @db._emit "ins", @name, insObj
@@ -576,11 +577,11 @@
         insertObjs = {}
         if cols.length is 1
           relatedObjs = argObj[exTblName] or argObj[exTblName + "." + cols[0]]
-          (insertObjs[cols[0]] = if Array.isArray then relatedObjs else [relatedObjs]) if relatedObjs
+          (insertObjs[cols[0]] = if Array.isArray relatedObjs then relatedObjs else [relatedObjs]) if relatedObjs
         else
           for col in cols
             relatedObjs = argObj[exTblName + "." + col]
-            (insertObjs[col] = if Array.isArray then relatedObjs else [relatedObjs]) if relatedObjs
+            (insertObjs[col] = if Array.isArray relatedObjs then relatedObjs else [relatedObjs]) if relatedObjs
 
         for col, relatedObjs of insertObjs
           exTable = @db.table(exTblName)
@@ -592,165 +593,142 @@
       @db.save()  if @db._autosave
       copy insObj
 
+    ###
+    # Table#upd()
+    ###
+    upd : (argObj, options) ->
+      options or (options = {})
+      err "id is not found in the given object." if argObj is null or argObj.id is null or argObj.id is Table.ID_TEMP #TODO update without id
+      argObj.id = Number(argObj.id) # TODO do not modify argument object
+      oldObj = @_data[argObj.id]
+      err "Cannot update. Object not found in table", @name, "with given id", argObj.id if oldObj is null
+
+      # delete timestamp (prevent manual update)
+      unless options.force
+        delete argObj.ins_at
+        delete argObj.upd_at
+      else
+        argObj.ins_at = Number(argObj.ins_at)  if "ins_at" of argObj
+        argObj.upd_at = new Date().getTime()
+
+      # create new update object and decide which columns to update
+      @_convertRelObj argObj
+      updObj = id: argObj.id
+      updCols = []
+      for col in @columns
+        if argObj.hasOwnProperty(col)
+          updVal = argObj[col]
+          updObj[col] = updVal
+          updCols.push col  if updVal isnt oldObj[col]
+          @_cast col, argObj
+        else
+          updObj[col] = oldObj[col]
+
+      # udpate table with relation
+      for updCol in updCols
+        relTblName = @_rels[updCol]
+        continue unless relTblName
+        idcol = updCol + "_id"
+        if idcol of updObj
+          exId = updObj[idcol]
+          required = @_colInfos[idcol].required
+          continue if not required and not exId?
+          exObj = @db.one(relTblName, exId)
+          if not required and not exObj?
+            updObj[idcol] = null
+          else if exObj is null
+            err "invalid external id", quo(idcol), ":", exId
+
+      ## udpate indexes, classes
+      # removing old index
+      # TODO don't remove index when the key is id
+      updIndexPoses = {}
+      for updCol in updCols
+        idxNames = @_idxKeys[updCol]
+        continue unless idxNames
+        for idxName in idxNames
+          list = @_indexes[idxName]
+          # getting old position and remove it
+          for position in list.keys(updObj.id)
+            if list[position] is updObj.id
+              updIndexPoses[idxName] = position
+              list.remove position
+              break
+
+      @_data[argObj.id] = updObj
+
+      # checking unique
+      try
+        for updCol in updCols
+          idxNames = @_idxKeys[updCol]
+          continue unless idxNames
+          @_checkUnique idxName, updObj for idxName in idxNames
+      # rollbacking
+      catch e
+        @_data[argObj.id] = oldObj
+        @_indexes[idxName].insert oldObj.id for idxName of updIndexPoses
+        throw e
+      # update indexes
+      @_indexes[idxName].insert argObj.id for idxName of updIndexPoses
+
+      # update classes
+      for columns, cls of @_classes
+        cols = columns.split(",")
+        toUpdate = false
+        toUpdate = true for clsCol in cols when clsCol in updCols
+        continue unless toUpdate
+        oldval = cols.map((col) -> oldObj[col]).join(",")
+        newval = cols.map((col) -> updObj[col]).join(",")
+        delete cls[oldval][updObj.id]
+        delete cls[oldval] if Object.keys(cls[oldval]).length is 0
+        cls[newval] = {}  unless cls[newval]?
+        cls[newval][updObj.id] = Table.CLASS_EXISTING_VALUE
+
+      # firing event (FOR PERFORMANCE, existing check @db._hooks runs before emitting)
+      @db._hooks["upd"] and @db._emit "upd", @name, updObj, oldObj, updCols
+      @db._hooks["upd:" + @name] and @db._emit "upd:" + @name, updObj, oldObj, updCols
+
+      # update related objects
+      for exTblName, referred of @_referreds
+        cols = Object.keys referred
+        updateObjs = {}
+        if cols.length is 1
+          relatedObjs = argObj[exTblName] or argObj[exTblName + "." + cols[0]]
+          (updateObjs[cols[0]] = if Array.isArray relatedObjs then relatedObjs else [relatedObjs]) if relatedObjs
+        else
+          for col in cols
+            relatedObjs = argObj[exTblName + "." + col]
+            (updateObjs[col] = if Array.isArray relatedObjs then relatedObjs else [relatedObjs]) if relatedObjs
+
+        for col, relatedObjs of updateObjs
+          # related objects with id
+          idhash = {}
+          for relatedObj in relatedObjs
+            idhash[relatedObj.id] = relatedObj if relatedObj.id
+
+          query = {}
+          query[col + "_id"] = updObj.id
+          exTable = @db.table(exTblName)
+          oldIds = exTable.find(query, select: "id")
+
+          # delte related objects in past unless options.append
+          unless options.append
+            exTable.del oldId  for oldId in oldIds when not idhash[oldId]
+
+          # update related objects if id exists
+          exTable.upd idhash[oldId] for oldId in oldIds when idhash[oldId]
+
+          # insert new related objects if id is not set
+          for relatedObj in relatedObjs
+            continue if relatedObj.id
+            relatedObj[col + "_id"] = updObj.id
+            exTable.ins relatedObj
+
+      @db.save()  if @db._autosave
+      updObj
+
   JSRel.Table = Table
 
-  Table::upd = (obj, options) ->
-    options or (options = {})
-    (obj and obj.id? and obj.id isnt Table.ID_TEMP) or err("id is not found in the given object.")
-    obj.id = Number(obj.id)
-    old = @_data[obj.id]
-    (old) or err("Cannot update. Object not found in table", @name)
-    unless options.force
-      delete obj.ins_at
-
-      delete obj.upd_at
-    else
-      obj.ins_at = Number(obj.ins_at)  if "ins_at" of obj
-      obj.upd_at = new Date().getTime()
-    @_convertRelObj obj
-    updObj = id: obj.id
-    updKeys = []
-    @columns.forEach ((col) ->
-      if obj.hasOwnProperty(col)
-        v = obj[col]
-        updObj[col] = v
-        updKeys.push col  if v isnt old[col]
-        @_cast col, obj
-      else
-        updObj[col] = old[col]
-      return
-    ), this
-    updKeys.forEach ((col) ->
-      tbl = @_rels[col]
-      return  unless tbl
-      idcol = col + "_id"
-      if idcol of updObj
-        exId = updObj[idcol]
-        required = @_colInfos[idcol].required
-        return  if not required and not exId?
-        exObj = @db.one(tbl, exId)
-        if not required and not exObj?
-          updObj[idcol] = null
-          return
-        (exObj) or err("invalid external id", quo(idcol), ":", exId)
-      return
-    ), this
-    updIndexPoses = {}
-    updKeys.forEach ((column) ->
-      idxNames = @_idxKeys[column]
-      return  unless idxNames
-      idxNames.forEach ((idxName) ->
-        list = @_indexes[idxName]
-        list.keys(updObj.id).some (k) ->
-          if list[k] is updObj.id
-            updIndexPoses[idxName] = k
-            true
-
-        (updIndexPoses[idxName] >= 0) or err("invalid index position: ", idxName, "in", updObj.id)
-        list.remove updIndexPoses[idxName]
-        return
-      ), this
-      return
-    ), this
-    @_data[obj.id] = updObj
-    try
-      updKeys.forEach ((column) ->
-        idxNames = @_idxKeys[column]
-        return  unless idxNames
-        idxNames.forEach ((idxName) ->
-          @_checkUnique idxName, updObj
-          return
-        ), this
-        return
-      ), this
-    catch e
-      @_data[obj.id] = old
-      Object.keys(updIndexPoses).forEach ((idxName) ->
-        @_indexes[idxName].insert old.id
-        return
-      ), this
-      throw ereturn null
-    Object.keys(updIndexPoses).forEach ((idxName) ->
-      list = @_indexes[idxName]
-      list.insert obj.id
-      return
-    ), this
-    Object.keys(@_classes).forEach ((columns) ->
-      cls = @_classes[columns]
-      cols = columns.split(",")
-      toUpdate = cols.every((col) ->
-        updKeys.indexOf(col) >= 0
-      )
-      return  unless toUpdate
-      oldval = cols.map((col) ->
-        old[col]
-      )
-      newval = cols.map((col) ->
-        updObj[col]
-      )
-      return  if oldval is newval
-      (cls[oldval][updObj.id] is 1) or err("update object is not in classes.", updObj.id, "in table", quo(@name))
-      delete cls[oldval][updObj.id]
-
-      delete cls[oldval]  if Object.keys(cls[oldval]).length is 0
-      cls[newval] = {}  unless cls[newval]
-      cls[newval][updObj.id] = 1
-      return
-    ), this
-    @db._emit "upd", @name, updObj, old, updKeys
-    @db._emit "upd:" + @name, updObj, old, updKeys
-    @_updateRelations obj, updObj, options.append
-    @db.save()  if @db._autosave
-    updObj
-
-  Table::_updateRelations = (obj, updObj, append) ->
-    Object.keys(@_referreds).forEach ((exTbl) ->
-      cols = Object.keys(@_referreds[exTbl])
-      updates = {}
-      if cols.length is 1
-        col = cols[0]
-        arr = obj[exTbl] or obj[exTbl + "." + col]
-        return  unless Array.isArray(arr)
-        updates[col] = arr
-      else
-        cols.forEach (col) ->
-          arr = obj[exTbl + "." + col]
-          return  unless Array.isArray(arr)
-          updates[col] = arr
-          return
-
-      Object.keys(updates).forEach ((col) ->
-        arr = updates[col]
-        idhash = arr.reduce((o, v) ->
-          o[v.id] = v  if v.id
-          o
-        , {})
-        query = {}
-        query[col + "_id"] = updObj.id
-        tbl = @db.table(exTbl)
-        oldIds = tbl.find(query,
-          select: "id"
-        )
-        unless append
-          oldIds.forEach (id) ->
-            tbl.del id  unless idhash[id]
-            return
-
-        oldIds.forEach (id) ->
-          tbl.upd idhash[id]  if idhash[id]
-          return
-
-        arr.forEach (v) ->
-          return  if v.id
-          v[col + "_id"] = updObj.id
-          tbl.ins v
-          return
-
-        return
-      ), this
-      return
-    ), this
-    return
 
   Table::find = (query, options, _priv) ->
     options or (options = {})
@@ -909,7 +887,7 @@
         val = cols.map((col) ->
           obj[col]
         )
-        (cls[val][obj.id] is 1) or err("deleting object is not in classes.", quo(obj.id), "in table", quo(@name))
+        (cls[val][obj.id] is Table.CLASS_EXISTING_VALUE) or err("deleting object is not in classes.", quo(obj.id), "in table", quo(@name))
         delete cls[val][obj.id]
 
         delete cls[val]  if Object.keys(cls[val]).length is 0

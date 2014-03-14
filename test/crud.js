@@ -450,7 +450,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
     "invalid external id" : function(tbl) {
       var stTable = db.table("song_tag");
       var tag120 = stTable.one({tag_id: 120});
-      tag120.tag_id = 10000;
+      tag120.tag_id = 12345;
       try {
         stTable.upd(tag120);
       }
