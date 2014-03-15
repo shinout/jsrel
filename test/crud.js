@@ -141,6 +141,42 @@ vows.describe('== TESTING CRUD ==').addBatch({
       assert.lengthOf(AURKAs, 2);
     },
 
+    "get AURKA% or AQP%" : function(tagTbl) {
+      var AURKA_OR_AQP = tagTbl.find({word: [{like$: "AURKA"}, {like$: "AQP"}]});
+      assert.lengthOf(AURKA_OR_AQP, 4 + 2);
+    },
+
+    "get AURKA% and KAIP%" : function(tagTbl) {
+      var AURKA_AND_KAIP= tagTbl.find({word: {like$: ["AURKA", "KAIP"]}});
+      assert.lengthOf(AURKA_AND_KAIP, 1);
+    },
+
+    "get AURKA or AQP1" : function(tagTbl) {
+      var AURKA_OR_AQP1 = tagTbl.find({word: {$in: ["AURKA", "AQP1"]}});
+      assert.lengthOf(AURKA_OR_AQP1, 2);
+    },
+
+    "get AURKA or AQP1 using equal" : function(tagTbl) {
+      var AURKA_OR_AQP1 = tagTbl.find({word: ["AURKA", "AQP1"]});
+      assert.lengthOf(AURKA_OR_AQP1, 2);
+    },
+
+    "get AURKA% or AQP1" : function(tagTbl) {
+      var AURKA$_OR_AQP1 = tagTbl.find({word: [
+                                      {like$: "AURKA"}, 
+                                      {equal: "AQP1"}
+                                    ]});
+      assert.lengthOf(AURKA$_OR_AQP1, 3);
+    },
+
+    "get AURKA% and AURKAIP1" : function(tagTbl) {
+      var AURKA$_OR_AQP1 = tagTbl.find({word: {
+                                          like$: "AURKA", 
+                                          equal: "AURKAIP1"
+                                       }});
+      assert.lengthOf(AURKA$_OR_AQP1, 1);
+    },
+
     "get %BP%" : function(tagTbl) {
       var BPs = tagTbl.find({word: {like: "BP"}});
       assert.lengthOf(BPs, 15);

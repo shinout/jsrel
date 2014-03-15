@@ -931,7 +931,7 @@ Returns a list of records.
 <td>name must be like "%inout"</td></tr>
 
 <tr><th>{name: [{$like: "inout"}, {equal: "nishiko"}] }</th>
-<td>name must be like "%inout" AND equals "nishiko"</td></tr>
+<td>name must be like "%inout" OR equals "nishiko"</td></tr>
 
 <tr><th>{name: {$like: "inout", equal: "nishiko"} }</th>
 <td>name must be like "%inout" AND equals "nishiko"</td></tr>
