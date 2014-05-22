@@ -3,14 +3,18 @@
   "name": "jsrel",
   "description": "JavaScript lightweight synchronous RDB",
   "keywords": ["database", "DB", "RDB", "relation"],
-  "version": "0.3.1",
+  "version": "0.3.2",
   "repository": {
     "url": "git://github.com/shinout/jsrel"
   },
-  "main": "jsrel.js",
+  "main": "lib/sqd.js",
   "scripts": {
     "test": "vows test/*.js"
   },
+  "bin": {
+    "install-jsrel": "./bin/install-jsrel.sh"
+  },
+
   "engines": {
     "node": ">=0.6.1"
   },
@@ -19,7 +23,9 @@
   },
   "devDependencies": {
     "vows" : ">=0.6.2",
-    "linestream" : ">=0.3.2"
+    "linestream" : ">=0.3.2",
+    "grunt": "^0.4.4",
+    "grunt-contrib-coffee": "^0.10.1"
   },
   "optionalDependencies": {}
 }

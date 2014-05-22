@@ -1,5 +1,4 @@
-require('coffee-script/register');
-var JSRel = require('../jsrel.coffee');
+var JSRel = require('../lib/jsrel.js');
 var vows = require('vows');
 var assert = require('assert');
 var schema = {
