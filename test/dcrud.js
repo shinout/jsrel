@@ -121,6 +121,14 @@ vows.describe('== TESTING CRUD ==').addBatch({
       }
     },
 
+    "all" : function(tagTbl) {
+      assert.equal(tagTbl.find().length, tagTbl.count());
+    },
+
+    "all( find null)" : function(tagTbl) {
+      assert.equal(tagTbl.find(null).length, tagTbl.count());
+    },
+
     "the number of entries" : function(tagTbl) {
       assert.equal(tagTbl.count(), tagTbl._indexes.id.length);
     },
