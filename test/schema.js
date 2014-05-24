@@ -3,7 +3,7 @@ var vows = require('vows');
 var assert = require('assert');
 
 vows.describe('== TESTING SCHEMA ==').addBatch({
-  "JSRel.use() with no schema": {
+  "JSRel.use() with no schema in creation": {
     topic: function() {
       try { return JSRel.use("tmp/schema01", {user: { name: true } }) }
       catch (e) { return e.message }
@@ -13,6 +13,42 @@ vows.describe('== TESTING SCHEMA ==').addBatch({
     }
   },
 
+  "JSRel.use() with no schema in loading": {
+    topic: null,
+
+    "succeeds": function() {
+      var id = "tmp/use_twice"
+      var db = JSRel.create(id, {schema: {user: { xxx: 1, name: true }}});
+      var db2 = JSRel.use(id);
+      assert.equal(db, db2);
+    }
+  },
+
+  "JSRel.create() with already existing uniqId": {
+    topic: function() {
+      var id = "tmp/xxx"
+      var db = JSRel.create(id, {schema: {user: { xxx: 1, name: true }}});
+      try {
+        var db2 = JSRel.create(id, {schema: {user: { xxx: 1, name: true }}});
+      }
+      catch (e) { return e.message }
+    },
+    " is not allowed" : function(topic) {
+      assert.match(topic, /already exists/);
+    }
+  },
+
+
+  "JSRel.createIfNotExists() with already existing uniqId": {
+    topic: null,
+
+    "succeeds": function() {
+      var id = "tmp/yyy"
+      var db = JSRel.create(id, {schema: {user: { xxx: 1, name: true }}});
+      var db2 = JSRel.createIfNotExists(id, {schema: {user: { xxx: 1, name: true }}});
+      assert.equal(db, db2);
+    }
+  },
 
   "A schema that has 'id' as a column name": {
     topic: function() {

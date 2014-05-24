@@ -29,7 +29,7 @@ First, define the schema
 
 ```js
 var JSRel = require("jsrel");
-var db = JSRel.use("dbname", {schema: 
+var db = JSRel.create("dbname", {schema: 
   { user: { name : true, is_activated: "on", $uniques: "name"},
     book: { title: true, price: 1, author: "user", $indexes: "title" },
 }});
@@ -226,6 +226,7 @@ JSRel API documentation
 
 - JSRel.use(uniqId, options)
 - JSRel.create(uniqId, options)
+- JSRel.createIfNotExists(uniqId, options)
 - JSRel.$import(uniqId, data_str, options)
 - JSRel.uniqIds
 - JSRel.isNode
@@ -445,6 +446,11 @@ Creates instance if not exist, like **JSRel.use**.
 Throws an error if already exists, unlike **JSRel.use**.
 Arguments are the same as JSRel.use except options.reset, which is invalid in JSRel.create()
 
+### JSRel.createIfNotExists(uniqId, options) ###
+Creates instance if not exist.
+Gets previously created instance if already exists.
+**options** is optional when loading an existing database, and required when creating a new database.
+Actually, this is the alias for JSRel.use(uniqId, options)
 
 ### JSRel.$import(uniqId, data_str, options) ###
 Imports **data_str** and creates a new instance with **uniqId**.

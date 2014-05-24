@@ -146,18 +146,18 @@
     #   <private options>
     #   - __create (boolean) : throws an error if db already exists.
     ###
-    @use : (uniqId, options) ->
+    @use : (uniqId, options = {}) ->
       uniqId or err "uniqId is required and must be non-zero value."
       uniqId = uniqId.toString()
 
-      # if given uniqId already exists, load it
-      stored = @_dbInfos[uniqId]
-      if stored?
-        err "uniqId", quo(uniqId), "already exists" if options?.__create
+      # if given uniqId already exists in memory, load it
+      storedInMemory = @_dbInfos[uniqId]
+      if storedInMemory?
+        err "uniqId", quo(uniqId), "already exists" if options.__create
         return @_dbInfos[uniqId].db if not options or not options.reset
 
-      options or err "options is required."
-      options.storage = (if (isNode or isTitanium) then "file" else if isBrowser then "local" else "mock") unless options.storage
+      #options or err "options is required."
+      options.storage = options.storage or if (isNode or isTitanium) then "file" else if isBrowser then "local" else "mock"
       storage = @storages[options.storage]
       storage or err "options.storage must be one of " + Object.keys(@storages).map(quo).join(",")
 
@@ -171,6 +171,7 @@
         name = if options.name? then options.name.toString() else uniqId
         new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
 
+    @createIfNotExists = @use
 
     ###
     # JSRel.create(uniqId, option)
