@@ -307,6 +307,8 @@
       ret.f = if (noCompress) then "Raw" else "Compressed"
       JSON.stringify ret
 
+    # alias for $export
+    export : (noCompress)-> @$export noCompress
 
     ###
     # JSRel#toSQL(options)
