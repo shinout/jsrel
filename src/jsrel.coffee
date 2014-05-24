@@ -168,8 +168,8 @@
         Object.keys(options.schema).length or err "schema must contain at least one table"
         format = "Schema"
         tblData = deepCopy(options.schema)
-      name = if options.name? then options.name.toString() else uniqId
-      new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
+        name = if options.name? then options.name.toString() else uniqId
+        new JSRel(uniqId, name, options.storage, !!options.autosave, format, tblData)
 
 
     ###

@@ -1,2 +1,4 @@
 benchmarks/kgxref
 node_modules
+lab
+test/tmp
