@@ -42,6 +42,15 @@
           schema: schema
         });
         return assert.equal(reloaded_db.tables.length, 2);
+      },
+      loaded_is_true_when_loaded: function() {
+        var reloaded_db;
+        JSRel._dbInfos = {};
+        reloaded_db = JSRel.use(filename, {
+          schema: schema
+        });
+        assert.isTrue(reloaded_db.loaded);
+        return assert.isFalse(reloaded_db.created);
       }
     }
   })["export"](module);

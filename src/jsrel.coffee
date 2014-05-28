@@ -120,14 +120,16 @@
     # - autosave :
     # - format   : format of tblData to parse (one of Raw, Schema, Compressed)
     # - tblData  :
+    # - loaded   : if loaded from stored data, true
     ###
-    constructor: (uniqId, name, @_storage, @_autosave, format, tblData) ->
+    constructor: (uniqId, name, @_storage, @_autosave, format, tblData, loaded) ->
       defineConstants @, id: uniqId, name: name
 
       @constructor._dbInfos[uniqId] = db: this, storage: @_storage
 
       @_hooks = {}
       @_tblInfos = {}
+      @_loaded = !!loaded
 
       for tblName, colData of tblData
         @_tblInfos[tblName] = new Table(tblName, this, colData, format)
@@ -219,7 +221,7 @@
       storage = if options.storage? then options.storage.toString() else d.s
       JSRel.storages[storage]?  or err "options.storage must be one of " + Object.keys(JSRel.storages).map(quo).join(",")
 
-      new JSRel(uniqId, name, storage, autosave, d.f, d.t)
+      new JSRel(uniqId, name, storage, autosave, d.f, d.t, true) # the last "true" means "loaded"
 
     # alias
     @import = JSRel.$import
@@ -230,6 +232,9 @@
     ##
     #######
     defineGetters @::,
+      loaded : -> @_loaded
+      created: -> !@_loaded
+
       storage: -> JSRel.storages[@_storage]
 
       tables : -> Object.keys @_tblInfos

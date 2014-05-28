@@ -27,4 +27,11 @@ vows.describe('== TESTING RELOAD ==').addBatch(
       reloaded_db = JSRel.use(filename, schema: schema)
       assert.equal(reloaded_db.tables.length, 2)
 
+    loaded_is_true_when_loaded: ->
+      JSRel._dbInfos = {} # private...
+      reloaded_db = JSRel.use(filename, schema: schema)
+      assert.isTrue(reloaded_db.loaded)
+      assert.isFalse(reloaded_db.created)
+
+
 ).export(module)

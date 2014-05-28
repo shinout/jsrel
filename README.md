@@ -38,10 +38,12 @@ var db = JSRel.create("dbname", {schema:
 Second, insert data
 
 ```js
-var u1 = db.ins('user', {name: 'shinout'});
-var u2 = db.ins('user', {name: 'xxxxx', is_activated: false});
-var b1 = db.ins('book', {title: 'how to jsrel', price: 10, author: u1});
-var b2 = db.ins('book', {title: 'JSRel API doc', price: 20, author_id: u1.id});
+if (!db.loaded) { // if loaded from saved data, omits this section
+  var u1 = db.ins('user', {name: 'shinout'});
+  var u2 = db.ins('user', {name: 'xxxxx', is_activated: false});
+  var b1 = db.ins('book', {title: 'how to jsrel', price: 10, author: u1});
+  var b2 = db.ins('book', {title: 'JSRel API doc', price: 20, author_id: u1.id});
+}
 ```
 
 Find them!
@@ -249,6 +251,8 @@ JSRel API documentation
 - jsrel.name
 - jsrel.tables
 - jsrel.schema
+- jsrel.loaded
+- jsrel.created
 
 
 **instance of JSRel Table (table)**
@@ -764,6 +768,41 @@ schema  ===  schema2 // false, but deeply equal
 
 var db2 = JSRel.use("db2", {schema: schema});  // the same structure as db
 ```
+
+### jsrel.loaded ###
+(ReadOnly) boolean: true if loaded or imported from stored data, false otherwise.
+
+```js
+db = JSRel.use("/path/to/file", {schema: {tbl1: {name:true}, tbl2: {n: 1}}});
+
+// if not loaded, then inputs initialized data
+if (!db.loaded) {
+  db.ins("tbl1", {name: "shinout"});
+  db.ins("tbl1", {name: "nishiko"});
+  db.ins("tbl2", {n: 37});
+  db.ins("tbl2", {n: -21});
+}
+```
+### jsrel.created ###
+(ReadOnly) boolean: true if created, false otherwise.
+
+jsrel.created === !jsrel.loaded
+
+```js
+db = JSRel.use("/path/to/file", {schema: {tbl1: {name:true}, tbl2: {n: 1}}});
+
+// if created, then inputs initialized data
+if (db.created) {
+  db.ins("tbl1", {name: "shinout"});
+  db.ins("tbl1", {name: "nishiko"});
+  db.ins("tbl2", {n: 37});
+  db.ins("tbl2", {n: -21});
+}
+```
+
+
+
+
 
 instanceof JSRel.Table (shown as table)
 ------
