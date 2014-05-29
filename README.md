@@ -1226,14 +1226,14 @@ var result = db.table('user').find({name: "shinout"}, {join: JOIN_VALUE});
 <td>13</td>
 <th>{user : {age : {gt: 47}, outer: true} }</th>
 <td>outer joining. Records containing Empty 1:N subqueries can be remained with the column filled with null.</td>
-<td>[{id: 1, name: "mindia", "users": null}]</td>
+<td>[{id: 1, name: "mindia", "user": null}]</td>
 </tr>
 
 <tr>
 <td>13</td>
 <th>{user : {age : {gt: 47}, outer: "array"} }</th>
 <td>outer joining. Records containing Empty 1:N subqueries can be remained with the column filled with empty array.</td>
-<td>[{id: 1, name: "mindia", "users": [] }]</td>
+<td>[{id: 1, name: "mindia", "user": [] }]</td>
 </tr>
 
 
