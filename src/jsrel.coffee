@@ -816,7 +816,7 @@
           idcol = info.col
           name = info.name
           tblObj = @db.table(info.tbl)
-          q = Table._normalizeQuery(info.query)
+          q = Table._normalizeQuery(info.query, @_rels)
           joinCols.push name
           reqCols.push name  if info.req
           keys.forEach ((id) ->
@@ -980,7 +980,7 @@
 
   Table::_convertRelObj = (obj) ->
     Object.keys(@_rels).forEach (col) ->
-      return  if obj[col + "_id"]?
+      #return if obj[col + "_id"]?
       if obj[col] and obj[col].id?
         obj[col + "_id"] = obj[col].id
         delete obj[col]
@@ -1690,7 +1690,7 @@
     arrayize(query).map (condsList) ->
       Object.keys(condsList).reduce ((ret, column) ->
         conds = condsList[column]
-        if rels and rels[column]
+        if rels[column]
           conds = condsList[column].id
           column += "_id"
         ret[column] = arrayize(conds).map((cond) ->

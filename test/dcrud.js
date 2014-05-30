@@ -569,6 +569,16 @@ vows.describe('== TESTING CRUD ==').addBatch({
       var tagJoinSongs2 = tbl.one(33, {join : "song_tag"});
       assert.lengthOf(tagJoinSongs2.song_tag, len + 2);
     },
+
+    "relations4 : xxx_id and xxx: xxx is prior": function(tbl) {
+      var newSongTag = db.ins("song_tag", {song_id: 1, tag_id: 1});
+      newSongTag.song = db.one("song", {id: 4});
+      newSongTag.song_id = 6;
+      db.upd("song_tag", newSongTag);
+      var newSongTag2 = db.one("song_tag", newSongTag.id);
+      assert.equal(newSongTag2.song_id, 4);
+    }
+
   },
 
   "deleting": {
