@@ -733,7 +733,7 @@
     find : (query, options = {}, _priv = {}) ->
       report = Table._buildReportObj(options.explain)
       keys = @_indexes.id
-      query = (if (_priv.normalized) then query else Table._normalizeQuery(query))
+      query = (if (_priv.normalized) then query else Table._normalizeQuery(query, @_rels))
       if query
         keys = cup(query.map((condsList) ->
           ks = null
@@ -1685,11 +1685,15 @@
 
     ) then id else null)
 
-  Table._normalizeQuery = (query) ->
-    return null  if not query or not Object.keys(query).length
+  Table._normalizeQuery = (query, rels) ->
+    return null if not query or not Object.keys(query).length
     arrayize(query).map (condsList) ->
       Object.keys(condsList).reduce ((ret, column) ->
-        ret[column] = arrayize(condsList[column]).map((cond) ->
+        conds = condsList[column]
+        if rels and rels[column]
+          conds = condsList[column].id
+          column += "_id"
+        ret[column] = arrayize(conds).map((cond) ->
           (if (cond is null) then equal: null else (if (typeof cond is "object") then cond else equal: cond))
         )
         ret
