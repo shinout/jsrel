@@ -733,7 +733,7 @@
     find : (query, options = {}, _priv = {}) ->
       report = Table._buildReportObj(options.explain)
       keys = @_indexes.id
-      query = (if (_priv.normalized) then query else Table._normalizeQuery(query))
+      query = (if (_priv.normalized) then query else Table._normalizeQuery(query, @_rels))
       if query
         keys = cup(query.map((condsList) ->
           ks = null
@@ -809,7 +809,7 @@
           idcol = info.col
           name = info.name
           tblObj = @db.table(info.tbl)
-          q = Table._normalizeQuery(info.query)
+          q = Table._normalizeQuery(info.query, @_rels)
           joinCols.push name
           reqCols.push name if info.req
           for id in keys
@@ -966,7 +966,7 @@
 
   Table::_convertRelObj = (obj) ->
     Object.keys(@_rels).forEach (col) ->
-      return  if obj[col + "_id"]?
+      #return if obj[col + "_id"]?
       if obj[col] and obj[col].id?
         obj[col + "_id"] = obj[col].id
         delete obj[col]
@@ -1680,11 +1680,15 @@
 
     ) then id else null)
 
-  Table._normalizeQuery = (query) ->
-    return null  if not query or not Object.keys(query).length
+  Table._normalizeQuery = (query, rels) ->
+    return null if not query or not Object.keys(query).length
     arrayize(query).map (condsList) ->
       Object.keys(condsList).reduce ((ret, column) ->
-        ret[column] = arrayize(condsList[column]).map((cond) ->
+        conds = condsList[column]
+        if rels[column]
+          conds = condsList[column].id
+          column += "_id"
+        ret[column] = arrayize(conds).map((cond) ->
           (if (cond is null) then equal: null else (if (typeof cond is "object") then cond else equal: cond))
         )
         ret

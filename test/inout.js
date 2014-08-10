@@ -214,7 +214,6 @@ vows.describe('== TESTING IN/OUT ==').addBatch({
 
     "import implementation" : function(v) {
       var newDB = JSRel.$import(__dirname + "/tmp/inout", db.$export(), {force: true});
-      console.log(db.tables.length);
       assert.equal(newDB.tables.length,  db.tables.length);
     },
 

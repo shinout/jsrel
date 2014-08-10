@@ -157,7 +157,7 @@ vows.describe('== TESTING HOOKS ==').addBatch({
         assert.fail("this never be called.");
       });
       db.on("upd:song_tag", function(updObj, old, updKeys) {
-        assert.equal(updObj.song_id, new_song_id);
+        assert.equal(updObj.song_id, new_song.id);
         assert.equal(old.song_id, old_song_id);
         assert.lengthOf(updKeys, 1);
         assert.equal(updKeys[0], "song_id");
@@ -165,8 +165,8 @@ vows.describe('== TESTING HOOKS ==').addBatch({
 
       var st = db.one("song_tag", {}, {join: {song:{title: "やわらかな夜"}}});
       var old_song_id = st.song.id;
-      var new_song_id = db.one("song", {title: "ハイビスカス"}, {select: "id"});
-      st.song_id = new_song_id; 
+      var new_song = db.one("song", {title: "ハイビスカス"});
+      st.song = new_song;
       db.upd("song_tag", st);
     }
   }

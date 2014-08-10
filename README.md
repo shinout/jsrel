@@ -940,7 +940,17 @@ It is NOT the same as the given argument.
 
 #### relation updates ####
 
+
 updating related tables
+```js
+obj.rel = {id: 3 }
+obj.rel_id = 1
+// in this case, relObj is prior to rel_id
+table.upd(obj, {append: append});
+
+var rel_id = table.one(obj, {id: obj.id}, {select: "rel_id"}); // 3. not 1
+```
+
 
 ```js
 obj.rel_table = [relObj1, relObj2, ...];
