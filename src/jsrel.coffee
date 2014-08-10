@@ -433,7 +433,7 @@
   # - _idxKeys   : { column  => list of idx column sets}
   # - _classes   : { columns => classes hash object}
   # - _data      : { id      => record }
-  # - _rels      : { RelName => related table name }
+  # - _rels      : { column  => related table name }
   # - _referreds : { referring table name => { column => required or not} } (externally set)
   ###
   class Table
@@ -750,102 +750,89 @@
           ), this
           ks
         , this))
-      else report.searches.push searchType: "none"  if report
+      else report.searches.push searchType: "none" if report
+
+      # join tables
       joins = null
       joinCols = null
       if options.join
         joinInfos = @_getJoinInfos(options.join)
-        joins = {}
+        joins = {} # key: id of the main object, value: joining_name => data(array) to join
         joinCols = []
         reqCols = []
-        joinInfos.N.forEach ((info) ->
+
+        # join 1:N-related tables
+        for info in joinInfos.N
           report and Table._reportSubQuery(report, info, "1:N")
           idcol = info.col
           name = info.name
           tblObj = @db.table(info.tbl)
           joinCols.push name
-          reqCols.push name  if info.req
+          reqCols.push name if info.req
           if info.emptyArray
-            keys.forEach (id) ->
-              joins[id] = {}  unless joins[id]
-              joins[id][name] = []  unless joins[id][name]
-              return
+            for id in keys
+              joins[id] = {} unless joins[id]
+              joins[id][name] = []
   
-          tblObj.find(info.query, info.options,
-            usedTables: _priv.usedTables
-          ).forEach (result) ->
-            id = result[idcol]
-            joins[id] = {}  unless joins[id]
-            joins[id][name] = []  unless joins[id][name]
-            joins[id][name].push result
-            return
+          keys = keys.toArray() unless Array.isArray keys
+          info.query = {} unless info.query
+          info.query[idcol] = $in: keys
+          for result in tblObj.find(info.query, info.options)
+            orig_id = result[idcol] # id of the main object
+            joins[orig_id] = {} unless joins[orig_id]
+            joins[orig_id][name] = [] unless joins[orig_id][name]
+            joins[orig_id][name].push result
   
           if info.offset? or info.limit?
-            Object.keys(joins).forEach (id) ->
-              arr = joins[id][name]
-              joins[id][name] = Table._offsetLimit(arr, info.offset, info.limit)  if arr
-              return
+            for id, value of joins
+              arr = value[name]
+              value[name] = Table._offsetLimit(arr, info.offset, info.limit) if arr
   
           if info.select
             if typeof info.select is "string"
-              Object.keys(joins).forEach (id) ->
-                arr = joins[id][name]
-                if arr
-                  joins[id][name] = joins[id][name].map((v) ->
-                    v[info.select]
-                  )
-                return
-  
+              for id, value of joins
+                value[name] = value[name].map (v) -> v[info.select]
             else
               (Array.isArray(info.select)) or err("typeof options.select must be one of string, null, array")
-              Object.keys(joins).forEach (id) ->
-                arr = joins[id][name]
+              for id, value of joins
+                arr = value[name]
                 if arr
-                  joins[id][name] = join[id][name].map((v) ->
-                    info.select.reduce ((ret, k) ->
-                      ret[k] = v[k]
-                      ret
-                    ), {}
-                  )
-                return
+                  value[name] = value[name].map (v) ->
+                    ret = {}
+                    for col in info.select
+                      ret[col] = v[col]
+                    return ret
   
-          return
-        ), this
-        joinInfos[1].forEach ((info) ->
+        # join N:1-related tables
+        for info in joinInfos["1"]
           report and Table._reportSubQuery(report, info, "N:1")
           idcol = info.col
           name = info.name
           tblObj = @db.table(info.tbl)
           q = Table._normalizeQuery(info.query)
           joinCols.push name
-          reqCols.push name  if info.req
-          keys.forEach ((id) ->
+          reqCols.push name if info.req
+          for id in keys
             exId = tblObj._survive(@_data[id][idcol], q, true)
-            return  unless exId?
+            continue unless exId?
             joins[id] = {}  unless joins[id]
             joins[id][name] = tblObj._data[exId]
-            return
-          ), this
-          return
-        ), this
-        keys = keys.filter((id) ->
+
+        # actual joining
+        keys = keys.filter (id) ->
           joinColObj = joins[id]
           joinColObj = {}  unless joinColObj
           reqCols.every (col) ->
             joinColObj[col]
-  
-        , this)
-      keys = @_orderBy(keys, options.order, report)
-      keys = Table._offsetLimit(keys, options.offset, options.limit)
+
+      keys = @_orderBy(keys, options.order, report) if options.order?
+      keys = Table._offsetLimit(keys, options.offset, options.limit) if options.offset? or options.limit?
       res = @_select(keys, options.select, joins, joinCols)
-      return res  unless options.groupBy
+      return res unless options.groupBy
       ret = {}
       keyColumn = (if options.groupBy is true then "id" else options.key)
-      res.forEach (item) ->
-        ret[item[keyColumn]] = item
-        return
-  
-      ret
+      ret[item[keyColumn]] = item for item in res
+      return ret
 
   JSRel.Table = Table
   Table::one = (query, options, _priv) ->
@@ -965,13 +952,12 @@
     ret
 
   Table::_idxSearch = (list, obj, fn, nocopy) ->
-    ob = (if (nocopy) then obj else copy(obj))
-    ob.id = Table.ID_TEMP  unless ob.id?
+    ob = if nocopy then obj else copy obj
+    ob.id = Table.ID_TEMP unless ob.id?
     @_data[Table.ID_TEMP] = ob
-    ret = fn.call(this, ob, @_data)
+    ret = fn.call(@, ob, @_data)
     delete @_data[Table.ID_TEMP]
-
-    ret
+    return ret
 
   Table::_idxSearchByValue = (list, col, value, fn) ->
     obj = {}
@@ -1393,118 +1379,129 @@
     @_classes[idxname] = cols: cols
     return
 
-  Table::_getJoinInfos = (join) ->
-    if join is true
-      __j = {}
-      Object.keys(@_rels).forEach (col) ->
-        __j[col] = true
-        return
+  ###
+  # parse join options from find()
+  # returns canonical information of join (joinInfos)
+  # joinInfos: 
+  #   1: array of joinInfo (N:1 relation)
+  #   N: array of joinInfo (1:N relation)
+  #
+  # joinInfo:
+  #   name:
+  #   req:
+  #   emptyArray:
+  #   limit:
+  #   offset:
+  #   select:
+  #   query:   the first argument for find()
+  #   options: the second argument for find()
+  ###
+  Table::_getJoinInfos = (joinOptions) ->
+    if joinOptions is true
+      joinOptions = {}
+      joinOptions[col] = true for col, tblname of @_rels
 
-      join = __j
-    else if typeof join is "string"
-      k = join
-      join = {}
-      join[k] = true
+    else if typeof joinOptions is "string"
+      k = joinOptions
+      joinOptions = {}
+      joinOptions[k] = true
     joinInfos =
       1: []
       N: []
-      NM: []
 
-    Object.keys(join).forEach ((k) ->
-      joinInfo =
-        name: k
-        req: true
-        options: {}
+    for tbl_col, options of joinOptions
+      joinInfo = @_resolveTableColumn(tbl_col, options) # tbl, col and reltype is set
+      joinInfo.options = {}
 
-      val = join[k]
-      reltype = @_resolveTableColumn(k, joinInfo, val)
-      if typeof val is "object"
-        joinInfo.name = val.as  if val.as
-        joinInfo.req = false  if val.outer
-        joinInfo.emptyArray = true  if val.outer is "array"
-        delete val.as
+      if typeof options is "object"
+        joinInfo.name = if options.as then options.as else tbl_col
+        joinInfo.req = !options.outer
+        joinInfo.emptyArray = true if options.outer is "array"
+        delete options.as
+        delete options.outer
+        delete options.explain
 
-        delete val.outer
+        for op in [ "limit", "offset", "select"]
+          if options[op]?
+            joinInfo[op] = options[op]
+            delete options[op]
 
-        delete val.explain
+        for op in ["order", "join"]
+          if options[op]?
+            joinInfo.options[op] = options[op]
+            delete options[op]
 
-        [
-          "limit"
-          "offset"
-          "select"
-        ].forEach (op) ->
-          if val[op]?
-            joinInfo[op] = val[op]
-            delete val[op]
-          return
-
-        [
-          "order"
-          "join"
-        ].forEach (op) ->
-          if val[op]?
-            joinInfo.options[op] = val[op]
-            delete val[op]
-          return
-
-        qs = val
-        if val.where
-          Object.keys(val.where).forEach (k) ->
-            qs[k] = val.whare[k]
-            return
-
-          delete qs.where
-        joinInfo.query = qs
-      joinInfos[reltype].push joinInfo
-      return
-    ), this
-    joinInfos
-
-  Table::_resolveTableColumn = (k, joinInfo, val) ->
-    spldot = k.split(".")
-    len = spldot.length
-    reltype = undefined
-    (len <= 2) or err("invalid expression", quo(k))
-    if len is 1
-      if @_rels[k]
-        joinInfo.col = k + "_id"
-        joinInfo.tbl = @_rels[k]
-        reltype = "1"
+        query = options
+        if options.where
+          query[k] = v for k, v of options.where
+          delete query.where
+        joinInfo.query = query
       else
-        tbl = k
+        joinInfo.name = tbl_col
+        joinInfo.req = true
+
+      joinInfos[joinInfo.reltype].push joinInfo
+    return joinInfos
+
+  ###
+  # resolve table name and column name from given join option
+  # tbl_col <string>: table name or column name of related table.
+  #                   Format of "tablename.columename" is allowed to specify both precisely
+  # returns tableColumn (tbl: table, col: column, reltype : "1" or "N", "1" means N:1 relation, "N" means 1:N (or N:M) relation)
+  ###
+  Table::_resolveTableColumn = (tbl_col, options) ->
+    tbl_col = tbl_col.split(".")
+    len = tbl_col.length
+    (len <= 2) or err(quo(tbl_col), "is invalid expression", quo(k))
+
+    if len is 1
+      if @_rels[tbl_col[0]] # if given tbl_col is one of the name of N:1-related column
+        col = tbl_col[0]
+        tableColumn =
+          col : col + "_id"
+          tbl : @_rels[col]
+          reltype : "1"
+
+      else # 1:N or N:M
+        tbl = tbl_col[0]
         referred = @_referreds[tbl]
-        unless referred
-          (typeof val is "object" and val.via?) or err("table", quo(tbl), "is not referring table", quo(@name))
-          reltype = @_resolveTableColumn(val.via, joinInfo)
-          delete val.via
 
-          subval = {}
-          Object.keys(val).forEach (option) ->
-            return  if option is "as"
-            subval[option] = val[option]
-            delete val[option]  unless option is "outer"
-            return
-
-          val.join = {}
-          val.join[k] = subval
-          val.select = k
-        else
+        if referred # 1:N
           refCols = Object.keys(referred)
-          (refCols.length is 1) or err("table", quo(tbl), "refers", quo(@name), "multiply")
-          joinInfo.tbl = tbl
-          joinInfo.col = refCols[0] + "_id"
-          reltype = "N"
-    else
-      tbl = spldot[0]
-      col = spldot[1]
+          (refCols.length is 1) or err("table", quo(tbl), "refers", quo(@name), "multiply. You can specify table and column like", quo("table_name.column_name"))
+          tableColumn =
+            tbl : tbl
+            col : refCols[0] + "_id"
+            reltype : "N"
+
+        else # N:M via "via"
+          (typeof options is "object" and options.via?) or err("table", quo(tbl), "is not referring table", quo(@name))
+          tableColumn = @_resolveTableColumn(options.via) # first, joins 1:N table
+          delete options.via
+
+          # modify joinOptions so as to nest sub-joining info
+          subJoinInfo = {}
+          for option, value of options
+            continue if option is "as"
+            continue if option is "outer"
+            subJoinInfo[option] = value
+            delete options[option]
+
+          options.join = {} unless options.join
+          options.join[tbl] = subJoinInfo
+          options.select = tbl
+
+    else # 1:N-related table and column, expressed in "tablename.columnname"
+      [tbl, col] = tbl_col
       referred = @_referreds[tbl]
       refCols = Object.keys(referred)
       (refCols) or err("table", quo(tbl), "is not referring table", quo(@name))
       (refCols.indexOf(col) >= 0) or err("table", quo(tbl), "does not have a column", quo(col))
-      joinInfo.tbl = tbl
-      joinInfo.col = col + "_id"
-      reltype = "N"
-    reltype
+      tableColumn =
+        tbl : tbl
+        col : col + "_id"
+        reltype : "N"
+    return tableColumn
 
   Table::_normalizeIndexes = (arr) ->
     arr.map ((def) ->
@@ -1618,9 +1615,7 @@
     if typeof cols is "string"
       if cols is "id"
         return (if (keys.toArray) then keys.toArray() else keys)  if keys.length is 0 or typeof keys[0] is "number"
-        return keys.map((v) ->
-          Number v
-        )
+        return keys.map Number
       if joinCols and joinCols.indexOf(cols) >= 0
         return keys.map((id) ->
           joins[id][cols]
@@ -1742,9 +1737,7 @@
   Queries.index.equal = (col, value, list) ->
     @_idxSearchByValue list, col, value, (obj, data) ->
       keys = list.keys(obj.id)
-      (if keys then keys.map((k) ->
-        list[k]
-      ) else [])
+      return unless keys then [] else keys.map (k) -> list[k]
 
 
   Queries.index.like$ = (col, value, list) ->
@@ -1817,15 +1810,11 @@
   Queries.index.$in = (col, values, list) ->
     return []  unless list.length
     results = []
-    arrayize(values).forEach ((value) ->
+    for value in arrayize values
       @_idxSearchByValue list, col, value, (obj, data) ->
-        k = list.key(obj.id)
-        results.push list[k]  if k?
-        return
-
-      return
-    ), this
-    results
+        keys = list.keys(obj.id)
+        results.push list[k] for k in keys if keys
+    return results
 
   Queries.noIndex.equal = (col, value, ids) ->
     ids.filter ((id) ->

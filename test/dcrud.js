@@ -1,3 +1,4 @@
+require("termcolor").define;
 var JSRel = require('../lib/jsrel.js');
 var vows = require('vows');
 var assert = require('assert');
@@ -76,7 +77,6 @@ Object.keys(artists).forEach(function(name) {
 });
 
 artistTbl.ins({name: "shinout"}); // who has no songs. (actually, I have some in MySpace!!)
-
 
 vows.describe('== TESTING CRUD ==').addBatch({
 
@@ -296,27 +296,54 @@ vows.describe('== TESTING CRUD ==').addBatch({
       var report = {};
       var song30 = tbl.one({id: 30}, {join: {artist: {name: "paris match"} }, explain : report });
       assert.isNull(song30);
-    }
+    },
+
+    "with select": function(tbl) {
+      var artists = tbl.find({id: {$in: [31,42,63,64,45]}}, {join: "artist", select: "artist" });
+      assert.lengthOf(artists, 5);
+      assert.equal(artists[0].name, "orangepekoe");
+      assert.equal(artists[1].name, "jazztronik");
+    },
+
   },
 
   "join 1:N": {
     topic : db.table('artist'),
-    "column name (one)": function(tbl) {
+    "table name (one)": function(tbl) {
       var report = {};
       var pm = tbl.one(
         { name: "paris match"},
         { join:
           { song : 
             { order : { rate: "desc" },
-              offset: 10,
+              offset: 4,
               limit : 10
             }
           },
           explain : report
         }
       );
-      assert.equal(pm.song[9].rate, 2);
-      assert.equal(pm.song[3].title, "eternity");
+      assert.lengthOf(pm.song, 10);
+      assert.equal(pm.song[0].rate, 4);
+    },
+
+    "tablename.columnname": function(tbl) {
+      var report = {};
+      var pm = tbl.one(
+        { name: "paris match"},
+        { join:
+          { "song.artist" : 
+            { order : { rate: "desc" },
+              offset: 10,
+              limit : 10,
+              as: "songs"
+            }
+          },
+          explain : report
+        }
+      );
+      // assert.equal(pm.songs[9].rate, 2);
+      // assert.equal(pm.songs[3].title, "eternity");
     },
 
     "as songs": function(tbl) {
@@ -329,7 +356,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
 
     "inner join": function(tbl) {
       var report = {};
-      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs" } }, explain: report, select: "name" });
+      var artists = tbl.find(null, {join: {song : {order: {rate: "desc"}, as: "songs" } }, explain: report });
       assert.lengthOf(artists, 8);
     },
 
@@ -344,6 +371,7 @@ vows.describe('== TESTING CRUD ==').addBatch({
       var shinout = tbl.one({name: "shinout"}, {join: {song : {order: {rate: "desc"}, as: "songs", outer: "array" } }, explain: report });
       assert.lengthOf(shinout.songs, 0);
     },
+
   },
 
   "join N:M": {
@@ -360,7 +388,20 @@ vows.describe('== TESTING CRUD ==').addBatch({
       assert.lengthOf(song.tags, 2);
       assert.equal(song.tags[0].word, "AURKB");
     },
-  },
+
+    "outer": function(tbl) {
+      var report = {};
+      var song = tbl.one(
+        { title: {like$: "アルメ"}
+        },
+        { explain: report,
+          join: { tag : { via : "song_tag", as : "tags", outer: true, word: {like$: "cccc"} } }
+        }
+      );
+      assert.isNull(song.tags);
+    },
+   },
+
 
   "trying to search to an empty table": {
     topic : db.table('book_tag'),
