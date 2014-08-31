@@ -791,7 +791,8 @@
           if info.select
             if typeof info.select is "string"
               for id, value of joins
-                value[name] = value[name].map (v) -> v[info.select]
+                if value[name]?
+                  value[name] = value[name].map (v) -> v[info.select]
             else
               (Array.isArray(info.select)) or err("typeof options.select must be one of string, null, array")
               for id, value of joins
